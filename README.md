@@ -19,6 +19,16 @@ A text-based grand strategy RPG for mobile browsers.
   - Military power = √(equipment × manpower) × quality.
   - 15 multi-year military projects form a tech tree, from drone swarms to the Stellar Lance.
   - Wars with war scores, offensives, peace deals, annexations and rebellions.
+- **Economy tab:**
+  - GDP, growth, wealth per person and how much of the economy's potential it has reached.
+  - A breakdown of exactly why the economy grows or shrinks.
+  - Charts of GDP and treasury/debt over time (tap to see values).
+  - The national budget, trade agreements and a ranking of world economies.
+- **Alliances:**
+  - When an ally is attacked, its allies join the war. Allies of the attacker sometimes join too.
+  - If your ally is attacked you get a call to arms: honour it, or refuse and break the alliance.
+  - When the original war ends, the allies' wars end with it.
+  - AI nations form and break alliances over time, especially against a common enemy.
 - **Economy:** set taxes and spending per sector (military, economy, welfare, science, space) and see your surplus or deficit live. Deficits become national debt, with interest that rises as debt grows. Also trade agreements and Earth restoration.
 - **Space race:** 12 milestones, from Lunar Outpost to Mars, the asteroid belt, Titan, a Dyson swarm, exoplanet colonies and Kardashev II.
 - **Characters age and die.** When yours dies, loses an election or is overthrown, you continue as an heir or protégé.

@@ -284,8 +284,44 @@ G.events = (function () {
       choices: [
         { t: 'Grant broad autonomy', r: function () { E.addMod(N(), 'space', 0.15, 10); E.addMod(N(), 'growth', -0.003, 5); return 'Mars governs itself, but trades freely with you.'; } },
         { t: 'Hold on at all costs', r: function () { G.military.scale(N(), 0.95); N().stability -= 4; E.addMod(N(), 'space', 0.05, 5); return 'Troopships head for Mars. This will not be the last uprising.'; } }
+      ] },
+    // ---------- Queued (not random) ----------
+    { id: 'call-to-arms', w: 0, cond: function () { return false; },
+      title: '{otherName} calls you to arms',
+      text: '{enemyName} has gone to war with your ally {otherName}. Your treaty says you must fight at their side.',
+      choices: [
+        { t: 'Honour the alliance: declare war on {enemyName}', r: function (c) {
+          var enemy = E.nation(c.eid), me = N();
+          if (!enemy || !enemy.alive || !c.o || !c.o.alive) return 'The war is already over.';
+          if (E.warBetween(me, enemy)) return 'You are already at war with ' + enemy.name + '.';
+          var parentAlive = G.state.wars.some(function (w) { return w.id === c.war; });
+          E.declareWar(me, enemy, { parent: parentAlive ? c.war : null, quiet: true });
+          E.log('🛡️ ' + me.name + ' honours its alliance with ' + c.o.name + ' and declares war on ' + enemy.name + '!', 'player');
+          E.changeRel(me, c.o, 15);
+          return 'Your forces mobilise alongside ' + c.o.name + '.';
+        } },
+        { t: 'Stay out of it (breaks the alliance)', r: function (c) {
+          if (c.o) { E.breakAlliance(N(), c.o); E.changeRel(N(), c.o, -40); }
+          pop(-5);
+          E.log('🐍 ' + N().name + ' refuses to help ' + (c.o ? c.o.name : 'its ally') + '. The alliance is broken.', 'player');
+          return 'You keep out of the war. Your former ally will not forget this.';
+        } }
       ] }
   ];
+
+  // Events that must be shown (e.g. calls to arms) wait in a queue ahead of random events.
+  function queue(ev) {
+    var s = G.state;
+    s.eventQueue = s.eventQueue || [];
+    if (s.eventQueue.some(function (x) { return x.id === ev.id && x.ctx.oid === ev.ctx.oid && x.ctx.eid === ev.ctx.eid; })) return;
+    s.eventQueue.push(ev);
+  }
+  function next() {
+    var s = G.state;
+    if (s.eventQueue && s.eventQueue.length) return s.eventQueue.shift();
+    return roll();
+  }
+  function hasQueued() { return !!(G.state.eventQueue && G.state.eventQueue.length); }
 
   function eligible() {
     return defs.filter(function (d) { return !d.cond || d.cond(); });
@@ -321,10 +357,11 @@ G.events = (function () {
     var d = defs.filter(function (x) { return x.id === ev.id; })[0];
     var c = Object.assign({}, ev.ctx, { o: E.nation(ev.ctx.oid) });
     var res = U.fill(d.choices[i].r(c) || '', ev.ctx);
-    G.state.event = null;
+    // Show queued events (calls to arms) next, if any.
+    G.state.event = hasQueued() ? G.state.eventQueue.shift() : null;
     E.save();
     return res;
   }
 
-  return { roll: roll, view: view, choose: choose, defs: defs };
+  return { roll: roll, next: next, queue: queue, hasQueued: hasQueued, view: view, choose: choose, defs: defs };
 })();

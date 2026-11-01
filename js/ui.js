@@ -68,6 +68,7 @@ G.ui = (function () {
   on('howto', function () {
     modal('<div class="kicker">How to play</div><h2>Ashes to Stars</h2>' +
       '<p>Every turn you get <b>2 actions</b>. Then press <b>End Turn</b> and the world moves forward: economies grow, wars rage, elections are held and rivals plot.</p>' +
+      '<p>The <b>Economy</b> tab explains your growth, shows charts over time and holds the national budget. <b>Alliances</b> pull allies into each other\'s wars, and you will be called to arms if an ally is attacked.</p>' +
       '<p>The <b>Military</b> tab shows your manpower, equipment and branches. As head of state you set conscription and start multi-year military projects there.</p>' +
       '<p><b>Heads of State</b> set taxes and spending, wage wars, sign treaties and run the space programme. Spend more than you earn and the deficit becomes <b>national debt</b>. Debt costs interest, and too much of it slows growth and destabilises the nation.</p>' +
       '<p><b>Politicians, Generals and Executives</b> spend their personal wealth to build influence and popularity, and must seize power through elections, coups or boardroom takeovers.</p>' +
@@ -155,8 +156,8 @@ G.ui = (function () {
     var head = '<div class="topbar"><div class="row"><div><div class="year">' + s.year + '</div>' +
       '<div class="era">' + E.era(s.year) + ' · ' + (yrs === 1 ? '1 year' : yrs + ' years') + ' per turn</div></div>' +
       '<div class="row"><span class="tag">⚡ ' + s.ap + ' action' + (s.ap === 1 ? '' : 's') + '</span><button class="icon-btn" data-act="menu">☰</button></div></div></div>';
-    var body = { home: homeTab, act: actTab, mil: militaryTab, world: worldTab, space: spaceTab, log: logTab }[tab]();
-    var tabs = [['home', '🏛️', 'Home'], ['act', '⚡', 'Actions'], ['mil', '🎖️', 'Military'], ['world', '🌍', 'World'], ['space', '🚀', 'Space'], ['log', '📰', 'News']];
+    var body = { home: homeTab, act: actTab, econ: economyTab, mil: militaryTab, world: worldTab, space: spaceTab, log: logTab }[tab]();
+    var tabs = [['home', '🏛️', 'Home'], ['act', '⚡', 'Actions'], ['econ', '💰', 'Economy'], ['mil', '🎖️', 'Military'], ['world', '🌍', 'World'], ['space', '🚀', 'Space'], ['log', '📰', 'News']];
     app.innerHTML = '<div class="page">' + head + body + '</div>' +
       '<div class="bottom"><div class="bottom-inner">' +
       '<button class="btn primary endturn" data-act="endturn">End Turn ▸ ' + (s.year + yrs) + '</button>' +
@@ -165,6 +166,7 @@ G.ui = (function () {
           (t[0] === 'act' && s.ap > 0 ? '' : '') + '</button>';
       }).join('') + '</div></div></div>';
     if (tab === 'world') initMap();
+    if (tab === 'econ') initCharts();
   }
   on('tab', function (t) { tab = t; render(); window.scrollTo(0, 0); });
 
@@ -211,8 +213,11 @@ G.ui = (function () {
     h += '<div class="card"><div class="row small"><span>🌍 Earth Health</span><span>' + Math.round(s.earth) + '/100</span></div>' + bar(s.earth) +
       '<div class="small muted">World population ' + U.people(E.worldPop()) + ' · ' + E.alive().length + ' nations · ' + s.wars.length + ' active war' + (s.wars.length === 1 ? '' : 's') + '</div></div>';
     // Budget
-    if (E.isLeader()) h += budgetCard(n);
-    else h += '<div class="card small muted">You do not control the national budget. Gain power to rule ' + esc(n.short) + '. See the Actions tab.</div>';
+    var bal = E.balance(n);
+    h += '<div class="card"><div class="row"><h3 style="margin:0">💰 Economy</h3>' +
+      '<button class="btn sm blue" data-act="tab" data-arg="econ">' + (E.isLeader() ? 'Budget & details' : 'Details') + ' ›</button></div>' +
+      '<div class="row small" style="margin-top:8px"><span class="muted">' + (bal >= 0 ? 'Budget surplus' : 'Budget deficit') + '</span><b class="' + (bal >= 0 ? 'good' : 'bad') + '">' + (bal >= 0 ? '+' : '−') + U.money(Math.abs(bal)) + '/yr</b></div>' +
+      (E.isLeader() ? '' : '<div class="small muted" style="margin-top:6px">You do not control the national budget. Gain power to rule ' + esc(n.short) + '.</div>') + '</div>';
     return h;
   }
 
@@ -350,6 +355,125 @@ G.ui = (function () {
   var resultNext = null;
   on('resultok', function () { closeModal(); var f = resultNext; resultNext = null; if (f) f(); });
 
+  // ---------- economy ----------
+  function pctS(v, d) { return (v >= 0 ? '+' : '−') + Math.abs(v * 100).toFixed(d === undefined ? 1 : d) + '%'; }
+
+  function economyTab() {
+    var n = E.pn(), s = S(), gp = E.growthParts(n), lead = E.isLeader();
+    var potential = U.clamp(gp.pc / gp.ceiling, 0, 2);
+    var byGdp = function (x) { return x.gdp; }, byPc = function (x) { return x.gdp / x.pop; };
+    var h = '';
+    // Overview
+    h += '<div class="card"><h2>💰 Economy of ' + esc(n.short) + '</h2><div class="grid2" style="margin-top:8px">' +
+      stat('GDP #' + E.rank(n, byGdp), U.money(n.gdp)) +
+      stat('Growth', '<span class="' + (gp.total >= 0 ? 'good' : 'bad') + '">' + pctS(gp.total) + '</span><span class="small muted">/yr</span>') +
+      stat('Per person #' + E.rank(n, byPc), '$' + U.num(gp.pc * 1000)) +
+      stat('Population', U.people(n.pop)) +
+      treasuryStat(n) + balanceStat(n) +
+      '</div>' +
+      '<div style="margin-top:12px"><div class="row small"><span>Economic potential reached</span><b>' + Math.round(potential * 100) + '%</b></div>' + bar(potential * 100, potential > 0.9 ? 'warn' : 'good') +
+      '<div class="small muted">Wealth per person is $' + U.num(gp.pc * 1000) + ' of a possible $' + U.num(gp.ceiling * 1000) + '. ' +
+      (potential > 1 ? 'You are <b>above</b> the ceiling, so the economy is pulled back down. <b>Raise the ceiling</b> with technology, space milestones and by healing the Earth.' :
+        potential > 0.9 ? 'You are close to the ceiling: <b>raise it</b> with technology, space milestones and by healing the Earth.' :
+        'There is room to grow: the further below the ceiling, the faster you catch up.') + '</div></div></div>';
+
+    // Growth breakdown
+    h += '<div class="card"><h3>Why the economy grows ' + (gp.total >= 0 ? '' : '(or shrinks) ') + 'this year</h3>' +
+      gp.parts.filter(function (p) { return Math.abs(p[1]) >= 0.0005; }).map(function (p) {
+        return '<div class="delta"><span>' + p[0] + '</span><span class="' + (p[1] >= 0 ? 'good' : 'bad') + '">' + pctS(p[1], 2) + '</span></div>';
+      }).join('') +
+      '<div class="delta" style="font-weight:700"><span>Total growth' + (gp.raw !== gp.total ? ' (capped)' : '') + '</span><span class="' + (gp.total >= 0 ? 'good' : 'bad') + '">' + pctS(gp.total, 2) + '</span></div>' +
+      '<div class="small muted" style="margin-top:8px">The ceiling ("potential") depends on <b>tech</b> (' + n.tech.toFixed(0) + '), your <b>space milestone</b> (' + esc(D.milestones[E.milestoneIndex(n)].name) + ') and <b>Earth Health</b> (' + Math.round(s.earth) + '/100).</div></div>';
+
+    // Charts
+    // Only history of the nation you belong to now (you may have moved after a conquest).
+    var hist = (s.hist || []).filter(function (x) { return !x.n || x.n === n.id; });
+    h += '<div class="card"><h3>GDP over time</h3>' + chartBox('ch-gdp') + '</div>';
+    h += '<div class="card"><h3>Treasury / national debt over time</h3>' + chartBox('ch-debt') +
+      '<div class="small muted" style="margin-top:4px">Above the line: money in the treasury. Below the line: national debt.</div></div>';
+    chartData = {
+      'ch-gdp': { pts: hist.map(function (x) { return [x.y, x.gdp]; }), fmt: U.money, color: '#4fc3f7' },
+      'ch-debt': { pts: hist.map(function (x) { return [x.y, x.t]; }), fmt: function (v) { return v >= 0 ? U.money(v) + ' saved' : U.money(-v) + ' debt'; }, color: '#ffb35c', zero: true }
+    };
+
+    // Budget
+    if (lead) h += budgetCard(n);
+    else h += '<div class="card"><h3>National budget (per year)</h3><div id="budget-sum">' + budgetSummary(n) + '</div>' +
+      '<div class="small warn" style="margin-top:8px">Read-only: only the head of state sets taxes and spending.</div></div>';
+
+    // Trade
+    var trade = s.pacts.filter(function (p) { return p.type === 'trade' && (p.a === n.id || p.b === n.id); });
+    h += '<div class="card"><h3>Trade agreements</h3>' +
+      (trade.length ? trade.map(function (p) {
+        var o = E.nation(p.a === n.id ? p.b : p.a);
+        return '<div class="row small" style="padding:4px 0"><span><span class="dot" style="background:' + o.color + '"></span>' + esc(o.name) + '</span><span class="muted">' + Math.max(0, p.until - s.year) + ' years left</span></div>';
+      }).join('') + '<div class="small muted" style="margin-top:6px">Each agreement adds about +0.6% growth per year for both sides.</div>' :
+        '<div class="small muted">No trade agreements. ' + (lead ? 'Sign one from the Actions tab or by tapping a nation on the World map (+0.6% growth for 10 years).' : '') + '</div>') + '</div>';
+
+    // World ranking
+    h += '<div class="card"><h3>World economies</h3>';
+    E.alive().slice().sort(function (a, b) { return b.gdp - a.gdp; }).slice(0, 8).forEach(function (x, i) {
+      h += '<div class="row small" style="padding:4px 0"><span>' + (i + 1) + '. <span class="dot" style="background:' + x.color + '"></span>' + esc(x.short) + (x === n ? ' (you)' : '') + '</span>' +
+        '<span>' + U.money(x.gdp) + ' <span class="muted">· ' + pctS(x.growth || 0) + '</span></span></div>';
+    });
+    if (E.rank(n, byGdp) > 8) h += '<div class="row small" style="padding:4px 0"><span>' + E.rank(n, byGdp) + '. ' + esc(n.short) + ' (you)</span><span>' + U.money(n.gdp) + '</span></div>';
+    return h + '</div>';
+  }
+
+  // ---------- line charts (single series, one axis, tap/hover for values) ----------
+  var chartData = {};
+  var CW = 340, CH = 170, PL = 58, PR = 12, PT = 12, PB = 26;
+  function chartBox(id) { return '<div class="chart" id="' + id + '"></div>'; }
+  function niceTicks(lo, hi) {
+    var span = hi - lo || Math.abs(hi) || 1, step = Math.pow(10, Math.floor(Math.log10(span / 3)));
+    [1, 2, 5, 10].some(function (m) { if (span / (step * m) <= 4) { step *= m; return true; } });
+    var t = [], v = Math.ceil(lo / step) * step;
+    for (; v <= hi + 1e-9; v += step) t.push(v);
+    return t;
+  }
+  function drawChart(id) {
+    var el = $(id), d = chartData[id];
+    if (!el || !d) return;
+    // Draw at the real pixel size so text is never stretched.
+    CW = Math.max(280, el.clientWidth || 340); CH = 170;
+    if (d.pts.length < 2) { el.innerHTML = '<div class="small muted" style="padding:20px 0;text-align:center">Not enough history yet: play a few turns.</div>'; return; }
+    var xs = d.pts.map(function (p) { return p[0]; }), ys = d.pts.map(function (p) { return p[1]; });
+    var x0 = xs[0], x1 = xs[xs.length - 1], y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+    if (d.zero) { y0 = Math.min(0, y0); y1 = Math.max(0, y1); } else y0 = Math.min(y0, 0);
+    if (y1 === y0) y1 = y0 + 1;
+    var X = function (v) { return PL + (v - x0) / (x1 - x0 || 1) * (CW - PL - PR); };
+    var Y = function (v) { return PT + (1 - (v - y0) / (y1 - y0)) * (CH - PT - PB); };
+    var svg = '<svg viewBox="0 0 ' + CW + ' ' + CH + '" class="chart-svg">';
+    niceTicks(y0, y1).forEach(function (t) {
+      svg += '<line x1="' + PL + '" x2="' + (CW - PR) + '" y1="' + Y(t) + '" y2="' + Y(t) + '" class="grid' + (t === 0 && d.zero ? ' zero' : '') + '"/>' +
+        '<text x="' + (PL - 6) + '" y="' + Y(t) + '" class="ylab">' + esc(t === 0 ? '0' : U.money(t).replace('$', '$')) + '</text>';
+    });
+    svg += '<text x="' + PL + '" y="' + (CH - 6) + '" class="xlab" text-anchor="start">' + x0 + '</text>' +
+      '<text x="' + (CW - PR) + '" y="' + (CH - 6) + '" class="xlab" text-anchor="end">' + x1 + '</text>';
+    var path = d.pts.map(function (p, i) { return (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1); }).join('');
+    if (d.zero) svg += '<path d="' + path + 'L' + X(x1) + ',' + Y(0) + 'L' + X(x0) + ',' + Y(0) + 'Z" fill="' + d.color + '" fill-opacity="0.12"/>';
+    svg += '<path d="' + path + '" fill="none" stroke="' + d.color + '" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>' +
+      '<line class="cross hidden" y1="' + PT + '" y2="' + (CH - PB) + '"/></svg>' +
+      '<div class="chart-dot hidden" style="background:' + d.color + '"></div><div class="chart-tip hidden"></div>';
+    el.innerHTML = svg;
+    var svgEl = el.querySelector('svg'), cross = el.querySelector('.cross'), tip = el.querySelector('.chart-tip'), dot = el.querySelector('.chart-dot');
+    function show(e) {
+      var r = svgEl.getBoundingClientRect(), vx = (e.clientX - r.left) / r.width * CW;
+      var yr = x0 + (vx - PL) / (CW - PL - PR) * (x1 - x0), best = 0;
+      d.pts.forEach(function (p, i) { if (Math.abs(p[0] - yr) < Math.abs(d.pts[best][0] - yr)) best = i; });
+      var p = d.pts[best], px = X(p[0]) / CW * r.width, py = Y(p[1]) / CH * r.height;
+      cross.setAttribute('x1', X(p[0])); cross.setAttribute('x2', X(p[0])); cross.classList.remove('hidden');
+      dot.style.left = px + 'px'; dot.style.top = py + 'px'; dot.classList.remove('hidden');
+      tip.innerHTML = '<b>' + p[0] + '</b> · ' + esc(d.fmt(p[1]));
+      tip.style.left = Math.min(Math.max(px, 60), r.width - 60) + 'px'; tip.classList.remove('hidden');
+    }
+    function hide() { cross.classList.add('hidden'); tip.classList.add('hidden'); dot.classList.add('hidden'); }
+    svgEl.addEventListener('pointermove', show);
+    svgEl.addEventListener('pointerdown', show);
+    svgEl.addEventListener('pointerleave', hide);
+  }
+  function initCharts() { Object.keys(chartData).forEach(drawChart); }
+
   // ---------- military ----------
   var M = G.military;
   function menStr(k) { return U.num(k * 1000); }
@@ -439,6 +563,14 @@ G.ui = (function () {
     }
     h += '</div>';
 
+    // Alliances
+    var al = E.allies(n);
+    h += '<div class="card"><h3>Alliances</h3>' +
+      (al.length ? al.map(function (x) {
+        return '<div class="row small" style="padding:4px 0"><span>🤝 <span class="dot" style="background:' + x.color + '"></span>' + esc(x.name) + '</span><span>power ' + U.num(E.power(x)) + '</span></div>';
+      }).join('') + '<div class="small muted" style="margin-top:6px">If you are attacked, your allies join the war. If an ally is attacked, you will be called to arms. Combined strength: ' + U.num(E.blocPower(n)) + '.</div>' :
+        '<div class="small muted">No allies. ' + (lead ? 'Propose an alliance from the Actions tab or by tapping a nation on the World map.' : '') + '</div>') + '</div>';
+
     // Wars
     var wars = E.warsOf(n);
     if (wars.length) {
@@ -504,6 +636,7 @@ G.ui = (function () {
     var me = E.pn();
     if (n === me) return '#4fc3f7';
     if (E.warBetween(me, n)) return '#ff3b30';
+    if (E.allied(me, n)) return '#2dd4bf';
     var r = E.relation(me, n);
     return r > 30 ? '#4caf7d' : r > 0 ? '#a5c882' : r > -30 ? '#e3b341' : '#e5534b';
   }
@@ -552,7 +685,7 @@ G.ui = (function () {
       '<div class="seg map-modes">' + [['political', 'Nations'], ['terrain', 'Terrain'], ['diplomacy', 'Diplomacy']].map(function (m) {
         return '<button class="' + (mapMode === m[0] ? 'sel' : '') + '" data-act="mapmode" data-arg="' + m[0] + '">' + m[1] + '</button>';
       }).join('') + '</div>' +
-      (mapMode === 'diplomacy' ? '<div class="small muted map-legend"><span style="color:#4fc3f7">■</span> You <span style="color:#4caf7d">■</span> Friendly <span style="color:#a5c882">■</span> Warm <span style="color:#e3b341">■</span> Cool <span style="color:#e5534b">■</span> Hostile <span style="color:#ff3b30">■</span> At war</div>' :
+      (mapMode === 'diplomacy' ? '<div class="small muted map-legend"><span style="color:#4fc3f7">■</span> You <span style="color:#2dd4bf">■</span> Ally <span style="color:#4caf7d">■</span> Friendly <span style="color:#a5c882">■</span> Warm <span style="color:#e3b341">■</span> Cool <span style="color:#e5534b">■</span> Hostile <span style="color:#ff3b30">■</span> At war</div>' :
         '<div class="small muted map-legend">Drag to move, pinch or use +/− to zoom. Tap a nation for details.' + (s.earth < 60 ? ' The brown haze is war damage; heal the Earth to clear it.' : '') + '</div>');
   }
 
@@ -671,7 +804,7 @@ G.ui = (function () {
       var w = me !== n && E.warBetween(me, n), rel = me !== n ? Math.round(E.relation(me, n)) : null;
       h += '<button class="nation-row ' + (n === me ? 'me' : '') + '" data-act="nation" data-arg="' + n.id + '">' +
         '<div class="row"><div><span class="dot" style="background:' + n.color + '"></span><b>' + esc(n.name) + '</b></div>' +
-        '<div>' + (w ? '<span class="tag war">WAR</span>' : '') + (rel !== null ? '<span class="tag ' + (rel > 20 ? 'pact' : rel < -30 ? 'war' : '') + '">' + (rel > 0 ? '+' : '') + rel + '</span>' : '<span class="tag">YOU</span>') + '</div></div>' +
+        '<div>' + (w ? '<span class="tag war">WAR</span>' : '') + (me !== n && E.allied(me, n) ? '<span class="tag pact">ALLY</span>' : '') + (rel !== null ? '<span class="tag ' + (rel > 20 ? 'pact' : rel < -30 ? 'war' : '') + '">' + (rel > 0 ? '+' : '') + rel + '</span>' : '<span class="tag">YOU</span>') + '</div></div>' +
         '<div class="meta">' + E.gov(n).name + ' · Pop ' + U.people(n.pop) + ' · GDP ' + U.money(n.gdp) + ' · Mil ' + U.num(E.power(n)) + ' · 🚀 ' + D.milestones[E.milestoneIndex(n)].name + '</div></button>';
     });
     var dead = Object.keys(S().nations).map(E.nation).filter(function (n) { return !n.alive; });
@@ -681,7 +814,7 @@ G.ui = (function () {
   on('nation', function (id) {
     var n = E.nation(id), me = E.pn(), self = n === me;
     var wars = E.warsOf(n).map(function (w) { return E.nation(w.a === n.id ? w.b : w.a).short; });
-    var pacts = S().pacts.filter(function (p) { return p.a === n.id || p.b === n.id; }).map(function (p) { return (p.type === 'trade' ? 'Trade' : 'Non-aggression') + ' with ' + E.nation(p.a === n.id ? p.b : p.a).short; });
+    var pacts = S().pacts.filter(function (p) { return p.a === n.id || p.b === n.id; }).map(function (p) { return ({ trade: 'Trade', nap: 'Non-aggression', alliance: '🛡️ Alliance' }[p.type] || p.type) + ' with ' + E.nation(p.a === n.id ? p.b : p.a).short; });
     var html = '<div class="kicker">' + esc(n.tier) + '</div><h2><span class="dot" style="background:' + n.color + '"></span>' + esc(n.name) + '</h2>' +
       '<p class="muted small">' + esc(n.desc) + '</p>' +
       '<div class="grid2">' + stat('Government', E.gov(n).name) + stat('Leader', n.leader ? esc(n.leader.name) : esc(S().player.name)) +
@@ -692,7 +825,7 @@ G.ui = (function () {
       (pacts.length ? '<p class="small">🤝 ' + pacts.join(' · ') + '</p>' : '') +
       (!self ? '<p class="small">Relations with you: <b>' + Math.round(E.relation(me, n)) + '</b> · Neighbour: ' + (me.neighbors.indexOf(n.id) >= 0 ? 'yes' : 'no') + '</p>' : '');
     if (!self && E.isLeader()) {
-      var dip = [['envoy', 'Send envoys'], ['trade', 'Trade agreement'], ['nap', 'Non-aggression pact'], ['tribute', 'Demand tribute'], ['war', 'Declare war'], ['offensive', 'Major offensive'], ['peace', 'Propose peace']];
+      var dip = [['envoy', 'Send envoys'], ['trade', 'Trade agreement'], ['alliance', 'Propose alliance'], ['breakally', 'Leave alliance'], ['nap', 'Non-aggression pact'], ['tribute', 'Demand tribute'], ['war', 'Declare war'], ['offensive', 'Major offensive'], ['peace', 'Propose peace']];
       var avail = A.available();
       dip.forEach(function (d) {
         var a = avail.filter(function (x) { return x.id === d[0]; })[0];

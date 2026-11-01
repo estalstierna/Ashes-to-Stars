@@ -27,7 +27,8 @@ for (let g = 0; g < games; g++) {
         if (!s.succession.dead && Math.random() < 0.5) E.continueAfterLoss();
         else { const o = E.successorOptions(); E.applySuccessor(o[Math.floor(Math.random() * o.length)]); successions++; }
       }
-      if (s.event) { const v = EV.view(s.event); EV.choose(s.event, Math.floor(Math.random() * v.choices.length)); }
+      let guard = 0;
+      while (G.state.event && guard++ < 10) { const v = EV.view(G.state.event); EV.choose(G.state.event, Math.floor(Math.random() * v.choices.length)); }
       for (let k = 0; k < 3 && s.ap > 0 && !s.succession; k++) {
         const av = A.available().filter(a => A.affordable(a) && s.used.indexOf(a.id) < 0);
         if (!av.length) break;
@@ -54,7 +55,8 @@ for (let g = 0; g < games; g++) {
         const top = E.alive().slice().sort((a, b) => b.gdp - a.gdp).slice(0, 3).map(n => `${n.id}:${G.util.money(n.gdp)}/t${n.tech.toFixed(0)}/${G.data.milestones[E.milestoneIndex(n)].name.split(' ')[0]}`);
         const mil = E.alive().slice().sort((a, b) => E.power(b) - E.power(a)).slice(0, 3).map(n => `${n.id}:${G.util.num(E.power(n))}/${G.util.num(n.mil.men * 1000)}men/${n.mil.done.length}proj/debt${Math.round(E.debtRatio(n) * 100)}%`);
         const changed = G.state.prov.filter((o, i) => o !== G.mapdata.provinces[i].n).length;
-        checkpoints[y] = `${y}: provincesChanged=${changed} nations=${E.alive().length} wars=${G.state.wars.length} earth=${G.state.earth.toFixed(0)} pop=${G.util.people(E.worldPop())} top=${top.join(' ')}\n      mil=${mil.join(' ')}`;
+        const alliances = G.state.pacts.filter(p => p.type === 'alliance').length, joined = G.state.log.filter(l => l.text.includes('honours its alliance')).length;
+        checkpoints[y] = `${y}: alliances=${alliances} allyJoins=${joined} provincesChanged=${changed} nations=${E.alive().length} wars=${G.state.wars.length} earth=${G.state.earth.toFixed(0)} pop=${G.util.people(E.worldPop())} top=${top.join(' ')}\n      mil=${mil.join(' ')}`;
       }
     }
     const firsts = Object.keys(G.state.firsts).map(i => `${i}@${G.state.firsts[i].year}`).join(' ');

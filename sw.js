@@ -1,5 +1,5 @@
 // Offline cache. Bump VERSION when files change so phones pick up updates.
-var VERSION = 'ats-v6';
+var VERSION = 'ats-v7';
 var FILES = [
   './', './index.html', './css/style.css', './manifest.webmanifest',
   './js/util.js', './js/names.js', './js/data.js', './js/engine.js', './js/military.js', './js/mapdata.js', './js/territory.js', './js/actions.js', './js/events.js', './js/ui.js',
