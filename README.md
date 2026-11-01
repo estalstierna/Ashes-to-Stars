@@ -28,6 +28,10 @@ A text-based grand strategy RPG for mobile browsers.
   - A breakdown of exactly why the economy grows or shrinks.
   - Charts of GDP and treasury/debt over time (tap to see values).
   - The national budget, trade agreements and a ranking of world economies.
+- **Laws & policies** (Home → Laws):
+  - Eight areas: speech and press, military service, economic model, environment, AI, immigration, civil liberties and space policy. Each has three options with clear trade-offs, such as growth, approval, stability, research, space, Earth healing, military quality, conscription unrest, threat and faction support.
+  - Changing a law uses an action, and each area has a 5-year cooldown.
+  - AI nations start with laws that fit their government and change them after coups.
 - **Difficulty and balance:**
   - Four difficulty levels: Easy, Normal, Hard and Brutal. They set AI growth, the cost of your actions, how strongly the world reacts to your expansion, war weariness, unrest in occupied lands and how much of a conquered economy you gain.
   - **Threat (aggressive expansion):** wars, conquests and annexations make the world fear you. Fear sours relations, leads nations to sign defensive pacts against you and can bring a coalition into your next war. It fades in peacetime.

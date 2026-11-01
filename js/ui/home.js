@@ -7,7 +7,19 @@
   function render() { K.render(); }
   function resumePending() { K.resumePending(); }
 
+  // Home has three views: the nation overview, its laws, and the cabinet & rivals.
   function homeTab() {
+    var v = K.view.home || 'nation';
+    var seg = '<div class="seg" style="margin-bottom:12px">' + [['nation', '🏛️ Nation'], ['laws', '📜 Laws'], ['cabinet', '👥 Cabinet']].map(function (x) {
+      return '<button class="' + (v === x[0] ? 'sel' : '') + '" data-act="homeview" data-arg="' + x[0] + '">' + x[1] + '</button>';
+    }).join('') + '</div>';
+    if (v === 'laws' && K.lawsView) return seg + K.lawsView();
+    if (v === 'cabinet' && K.cabinetView) return seg + K.cabinetView();
+    return seg + nationView();
+  }
+  on('homeview', function (v) { K.view.home = v; keepScroll(render); });
+
+  function nationView() {
     var s = S(), p = s.player, n = E.pn(), g = E.gov(n);
     var ms = D.milestones, mi = E.milestoneIndex(n), next = ms[mi + 1];
     var wars = E.warsOf(n);

@@ -59,6 +59,8 @@ G.character = (function () {
       change('public', (n.approval - 50) / 25);
       change('intel', 0.5);
     }
+    // Your laws win or lose you support with each faction.
+    if (p.role === 'leader' && G.laws) { var drift = G.laws.factionDrift(n); for (var fk in drift) change(fk, drift[fk]); }
     if (p.role === 'general') change('military', 1);
     if (p.role === 'corporate') change('business', 1);
     if (p.role === 'politician') change('public', 0.5);

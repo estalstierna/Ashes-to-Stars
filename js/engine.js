@@ -23,7 +23,7 @@ G.engine = (function () {
   // Starting wars, taking land and annexing nations make the world afraid of a nation.
   function addThreat(n, amount) {
     if (!n) return;
-    var k = ownedByPlayer(n) ? diff().threat : 0.8;
+    var k = (ownedByPlayer(n) ? diff().threat : 0.8) * (amount > 0 && G.laws ? G.laws.fx(n, 'threat') : 1);
     n.threat = U.clamp((n.threat || 0) + amount * k, 0, 150);
   }
   function threatLevel(n) {
@@ -139,7 +139,7 @@ G.engine = (function () {
   // Space points per year: share of GDP spent on space, scaled sub-linearly by economy size and by tech.
   function spaceRate(n) {
     var f = funds(n);
-    return sat(f.space / n.gdp, 0.04) * 1.1 * Math.pow(n.gdp, 0.3) * Math.pow(n.tech / 80, 0.8) * SPACE_K * (1 + G.research.bonus(n, 'space'));
+    return sat(f.space / n.gdp, 0.04) * 1.1 * Math.pow(n.gdp, 0.3) * Math.pow(n.tech / 80, 0.8) * SPACE_K * (1 + G.research.bonus(n, 'space') + G.laws.fx(n, 'space'));
   }
   function worldPop() { return alive().reduce(function (a, n) { return a + n.pop; }, 0); }
   // Diminishing returns: grows almost linearly for small x, then levels off at `cap`.
@@ -284,7 +284,7 @@ G.engine = (function () {
 
     // Population with a soft global carrying capacity raised by space colonies.
     var cap = 9000 * earthFactor() + alive().reduce(function (a, x) { return a + Math.max(0, milestoneIndex(x) - 3) * 400; }, 0);
-    var popG = (0.004 + sat(welR, 0.05) * 0.14 + modSum(n, 'pop') + G.research.bonus(n, 'pop')) * Math.max(-0.5, 1 - worldPop() / cap);
+    var popG = (0.004 + sat(welR, 0.05) * 0.14 + modSum(n, 'pop') + G.research.bonus(n, 'pop') + G.laws.fx(n, 'pop')) * Math.max(-0.5, 1 - worldPop() / cap);
     if (war) popG -= 0.004;
     n.pop = Math.max(0.5, n.pop * (1 + popG));
 
@@ -309,14 +309,14 @@ G.engine = (function () {
     var dr = debtRatio(n);
 
     // Approval and stability.
-    var apT = 50 + (growth - 0.02) * 400 + sat(welR, 0.05) * 320 - n.warYears * 2 * (ownedByPlayer(n) ? diff().weariness : 1) - (n.tax - 0.2) * 120 + modSum(n, 'approval') - G.military.conscApprovalPenalty(n) + G.research.bonus(n, 'approval');
+    var apT = 50 + (growth - 0.02) * 400 + sat(welR, 0.05) * 320 - n.warYears * 2 * (ownedByPlayer(n) ? diff().weariness : 1) - (n.tax - 0.2) * 120 + modSum(n, 'approval') - G.military.conscApprovalPenalty(n) + G.research.bonus(n, 'approval') + G.laws.fx(n, 'approval');
     if (n.gov === 'junta') apT += milR * 150;
     apT = U.clamp(apT, 5, 95);
     n.approval = U.clamp(n.approval + (apT - n.approval) * 0.25, 0, 100);
     // Empires are hard to hold: each conquered nation weighs on stability.
     var held = 0, all = S().nations;
     for (var hid in all) if (!all[hid].alive && all[hid].annexedBy === n.id) held++;
-    var stT = 28 + n.approval * 0.5 + g.stab - held * 4 - Math.max(0, dr - 0.9) * 15 - (war ? 6 : 0) + modSum(n, 'stability') + (n.gov === 'junta' ? milR * 200 : 0) + G.research.bonus(n, 'stability');
+    var stT = 28 + n.approval * 0.5 + g.stab - held * 4 - Math.max(0, dr - 0.9) * 15 - (war ? 6 : 0) + modSum(n, 'stability') + (n.gov === 'junta' ? milR * 200 : 0) + G.research.bonus(n, 'stability') + G.laws.fx(n, 'stability');
     stT = U.clamp(stT, 5, 98);
     n.stability = U.clamp(n.stability + (stT - n.stability) * 0.2, 0, 100);
     if (war) n.warYears++; else n.warYears = Math.max(0, n.warYears - 2);
@@ -360,6 +360,7 @@ G.engine = (function () {
       ['Economy budget (investment)', sat(f.econ / n.gdp, 0.06) * 0.6],
       ['Technology (discoveries)', G.research.bonus(n, 'growth')],
       ['Space colonies', G.space ? G.space.growth(n) : 0],
+      ['Laws & policies', G.laws ? G.laws.fx(n, 'growth') : 0],
       ['Rival momentum (difficulty)', ownedByPlayer(n) ? 0 : diff().aiGrowth],
       // Bonuses from actions, trade and events stack, but only up to +3%.
       ['Projects, trade & events', Math.min(0.03, modSum(n, 'growth'))],
@@ -865,6 +866,7 @@ G.engine = (function () {
       } else if (couped) {
         n.leader = makeLeader(n);
         if (n.gov === 'democracy' || n.gov === 'technocracy') n.gov = 'junta';
+        G.laws.resetForGov(n);
         n.stability = 45;
         log('💥 Coup in ' + n.name + '! ' + n.leader.name + ' seizes power.', n.id === S().player.nation ? 'player' : 'major');
       } else if (elected) {
@@ -1031,7 +1033,7 @@ G.engine = (function () {
       if (!s.succession || !s.succession.dead) playerAging();
       // Environmental discoveries heal the Earth, weighted by how big each economy is.
       var wg = alive().reduce(function (a, x) { return a + x.gdp; }, 0);
-      var heal = alive().reduce(function (a, x) { return a + G.research.bonus(x, 'earth') * U.clamp(x.gdp / wg * 5, 0.1, 1); }, 0);
+      var heal = alive().reduce(function (a, x) { return a + (G.research.bonus(x, 'earth') + G.laws.fx(x, 'earth')) * U.clamp(x.gdp / wg * 5, 0.1, 1); }, 0);
       s.earth = U.clamp(s.earth + 0.15 + (s.wars.length === 0 ? 0.1 : 0) + heal, 0, 100);
       s.pacts = s.pacts.filter(function (p) { return p.until >= s.year; });
       recordHistory();

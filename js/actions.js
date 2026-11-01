@@ -70,6 +70,17 @@ G.actions = (function () {
         return 'Conquered peoples gain a voice. Many start to feel at home.';
       } },
 
+    // Changing a law (done from Home → Laws, not listed in the Actions tab).
+    { id: 'law', hidden: true, cat: 'Politics', role: 'leader', name: 'Change a law', cost: 0.002,
+      desc: 'Pass a new law.',
+      run: function (arg) {
+        var parts = String(arg).split('|'), l = G.laws.law(parts[0]), o = G.laws.option(parts[0], parts[1]);
+        if (!l || !o || G.laws.cooldown(N(), l.id) > 0) return 'That law cannot be changed right now.';
+        G.laws.set(N(), l.id, o.id);
+        E.log('📜 ' + N().name + ' adopts a new law: ' + o.name + ' (' + l.name + ').', 'player');
+        return 'The law is passed: ' + o.name + '.';
+      } },
+
     // ----- Leader: Military -----
     { id: 'mobilize', cd: 3, cat: 'Military', role: 'leader', name: 'Call up reserves', cost: 0.01,
       desc: 'Instantly call up reservists: manpower +25% (it drifts back to your conscription level over a few years).',

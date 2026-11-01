@@ -81,7 +81,7 @@ G.military = (function () {
   }
   // Cost of paying soldiers, in billions per year.
   function personnelCost(n) { return n.mil.men * (n.gdp / n.pop) * 0.4 / 1000; }
-  function quality(n) { return (1 + n.tech / 50) * (1 + (n.mil.bonus.quality || 0)) * (1 + G.research.bonus(n, 'mil')); }
+  function quality(n) { return (1 + n.tech / 50) * (1 + (n.mil.bonus.quality || 0)) * (1 + G.research.bonus(n, 'mil') + G.laws.fx(n, 'mil')); }
   function branchStrength(n, b) { return n.mil.eq[b] * BRANCH_WEIGHT[b] * (1 + (n.mil.bonus[b] || 0)); }
   function equipment(n) { return BRANCHES.reduce(function (a, b) { return a + n.mil.eq[b]; }, 0); }
   function effectiveEquipment(n) { return BRANCHES.reduce(function (a, b) { return a + branchStrength(n, b); }, 0); }
@@ -106,7 +106,7 @@ G.military = (function () {
   // Effects of conscription on the economy and on public mood.
   function conscGrowthPenalty(n) { return Math.max(0, n.mil.consc - 0.01) * 0.6; }
   function conscApprovalPenalty(n) {
-    var p = Math.max(0, n.mil.consc - 0.01) * 400;
+    var p = Math.max(0, n.mil.consc - 0.01) * 400 * G.laws.fx(n, 'consc');
     return E().atWar(n) ? p * 0.5 : p;
   }
 

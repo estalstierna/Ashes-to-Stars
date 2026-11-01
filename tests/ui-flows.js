@@ -171,6 +171,23 @@ async function endTurn(page) {
     check(errors.length === 0, 'no page errors ' + errors.join('; '));
   }
 
+    console.log('Laws');
+  {
+    const { page, errors } = await newGame(browser, 'SWE', 'leader');
+    await page.click('[data-act=homeview][data-arg=laws]');
+    check(await page.$('[data-act=lawpick][data-arg="ai|unrestricted"]'), 'laws view lists options');
+    const before = await page.evaluate(() => G.research.rate(G.engine.pn()));
+    await page.click('[data-act=lawpick][data-arg="ai|unrestricted"]');
+    await page.click('#modal [data-act=lawpass]');
+    const r = await page.evaluate(() => ({ law: G.engine.pn().laws.ai, rate: G.research.rate(G.engine.pn()), cd: G.laws.cooldown(G.engine.pn(), 'ai') }));
+    check(r.law === 'unrestricted', 'law is changed');
+    check(r.rate > before, 'unrestricted AI raises research');
+    check(r.cd > 0, 'the law area goes on cooldown');
+    check(errors.length === 0, 'no page errors ' + errors.join('; '));
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: '/tmp/laws.png' });
+  }
+
     console.log('Economy charts and budget');
   {
     const { page, errors } = await newGame(browser, 'USA', 'leader');

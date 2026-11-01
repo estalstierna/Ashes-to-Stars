@@ -8,7 +8,7 @@
   function resumePending() { K.resumePending(); }
 
   function actTab() {
-    var s = S(), p = s.player, n = E.pn(), list = A.available();
+    var s = S(), p = s.player, n = E.pn(), list = A.available().filter(function (a) { return !a.hidden; });
     var cats = {};
     list.forEach(function (a) { (cats[a.cat] = cats[a.cat] || []).push(a); });
     var funds = !E.isLeader() ? 'Your wealth: <b>' + wealthStr(p.wealth) + '</b>' :
