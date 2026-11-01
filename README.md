@@ -32,11 +32,18 @@ A text-based grand strategy RPG for mobile browsers.
   - Eight areas: speech and press, military service, economic model, environment, AI, immigration, civil liberties and space policy. Each has three options with clear trade-offs, such as growth, approval, stability, research, space, Earth healing, military quality, conscription unrest, threat and faction support.
   - Changing a law uses an action, and each area has a 5-year cooldown.
   - AI nations start with laws that fit their government and change them after coups.
+- **Cabinet & rivals** (Home → Cabinet):
+  - As ruler you appoint five ministers: Finance, Defence, Foreign Affairs, Interior and Science. Each has a competence of ★1–5, a loyalty score and traits such as Brilliant, Corrupt, Ambitious, Popular, Hawk, Dove, Reformer or Hardliner.
+  - Ministers boost growth, military quality, relations, stability and research.
+  - Corrupt ministers skim money and cause scandals. Ambitious ones with low loyalty may resign and become rivals.
+  - **Rivals** are named, persistent enemies: opposition leaders, generals, media tycoons, regime insiders and former ministers. They grow when you are unpopular, smear you, weaken you in elections, and generals may attempt coups.
+  - You can discredit them, have the spies investigate them, offer them a ministry, or arrest them in non-democracies.
 - **Difficulty and balance:**
   - Four difficulty levels: Easy, Normal, Hard and Brutal. They set AI growth, the cost of your actions, how strongly the world reacts to your expansion, war weariness, unrest in occupied lands and how much of a conquered economy you gain.
   - **Threat (aggressive expansion):** wars, conquests and annexations make the world fear you. Fear sours relations, leads nations to sign defensive pacts against you and can bring a coalition into your next war. It fades in peacetime.
   - Investment in the economy, science, space and welfare has diminishing returns.
   - Stacked growth bonuses are capped at +3%, and national programmes have cooldowns.
+  - **Sovereign default:** above 200% debt-to-GDP a nation defaults. Its debt is written down, at the cost of a crisis.
 - **Treaties and alliances** (World → Diplomacy):
   - Three treaty types: non-aggression pact (15 years), defensive pact (defend each other only when attacked) and full alliance (defend each other, and may join each other's wars of aggression).
   - When a war starts, every treaty partner weighs whether to join. This depends on the treaty type, which side its partner is on (defending is far more likely than attacking), relations with both sides, whether together they can win, other wars it is fighting, any pact with the enemy, and distance.
@@ -93,6 +100,7 @@ To install it on a phone, open the URL and choose **Share → Add to Home Screen
 | `js/events-extra.js` | More events, plus yearly world news |
 | `js/ui/kit.js` | Shared UI helpers: modals, toasts, event delegation, shared view state |
 | `js/ui/main.js` | Title screen, character creation, the frame around the tabs, turn flow, events and succession |
+| `js/ui/government.js` | Laws and cabinet views on the Home tab |
 | `js/ui/home.js`, `actions.js`, `economy.js`, `military.js`, `world.js`, `science.js`, `space.js`, `news.js` | One file per tab |
 | `js/names.js` | Procedural name generator, organised by culture |
 | `js/mapdata.js` | Generated map provinces (from `tools/build-map.js`) |

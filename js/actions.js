@@ -81,6 +81,47 @@ G.actions = (function () {
         return 'The law is passed: ' + o.name + '.';
       } },
 
+    // ----- Rivals (done from Home → Cabinet) -----
+    { id: 'rival-discredit', hidden: true, cat: 'Politics', role: 'any', name: 'Discredit a rival', cost: 5,
+      desc: 'Dig up dirt and leak it.',
+      run: function (id) {
+        var r = G.cabinet.rival(id); if (!r) return 'No such rival.';
+        r.power = Math.max(5, r.power - U.randInt(12, 22)); r.hostility = Math.min(100, r.hostility + 10);
+        if (U.chance(0.2)) { P().popularity = U.clamp(P().popularity - 5, 0, 100); return 'The attack on ' + r.name + ' backfires: people think it was dirty politics.'; }
+        return r.name + '\'s reputation takes a hit.';
+      } },
+    { id: 'rival-investigate', hidden: true, cat: 'Politics', role: 'any', name: 'Have the spies investigate', cost: 8,
+      cond: function () { return G.character.standing('intel') >= 40; },
+      desc: 'Your friends in the intelligence services look for a real scandal.',
+      run: function (id) {
+        var r = G.cabinet.rival(id); if (!r) return 'No such rival.';
+        if (U.chance(G.character.standing('intel') / 120)) { r.power = Math.max(5, r.power - 35); E.log('🕵️ A scandal involving your rival ' + r.name + ' is exposed.', 'player'); return 'The spies find gold: ' + r.name + ' is caught in a scandal.'; }
+        r.hostility = Math.min(100, r.hostility + 15); return 'The investigation finds nothing, and ' + r.name + ' finds out about it.';
+      } },
+    { id: 'rival-coopt', hidden: true, cat: 'Politics', role: 'leader', name: 'Offer a rival a ministry', cost: 0.001,
+      desc: 'Bring them inside the tent.',
+      run: function (id) {
+        var r = G.cabinet.rival(id), c = S().cabinet; if (!r || !c) return 'Not possible.';
+        if (!U.chance(U.clamp((100 - r.hostility) / 120, 0.05, 0.85))) { r.hostility = Math.min(100, r.hostility + 10); return r.name + ' publicly refuses your offer.'; }
+        var post = G.cabinet.POST_IDS.slice().sort(function (a, b) { return G.cabinet.stars(c[a]) - G.cabinet.stars(c[b]); })[0];
+        var traits = (r.traits || []).filter(function (t) { return t !== 'ambitious'; }).concat(['ambitious']);
+        c[post] = { id: r.id, name: r.name, gender: r.gender, age: r.age, post: post, comp: U.randInt(2, 4), loyalty: 30, traits: traits, since: S().year };
+        S().rivals = S().rivals.filter(function (x) { return x !== r; });
+        E.log('🤝 Your rival ' + r.name + ' joins your cabinet as Minister of ' + G.cabinet.POSTS[post].name + '.', 'player');
+        return r.name + ' accepts the ministry of ' + G.cabinet.POSTS[post].name + '. Keep an eye on them.';
+      } },
+    { id: 'rival-arrest', hidden: true, cat: 'Politics', role: 'leader', name: 'Arrest a rival', cost: 0.002,
+      cond: function () { return !E.gov(N()).elections; },
+      desc: 'Lock them up.',
+      run: function (id) {
+        var r = G.cabinet.rival(id); if (!r) return 'No such rival.';
+        S().rivals = S().rivals.filter(function (x) { return x !== r; });
+        N().stability = Math.max(0, N().stability - 3); G.character.change('media', -6); G.character.change('intel', 4);
+        if (r.power > 60) E.addMod(N(), 'approval', -6, 3);
+        E.log('⛓️ Your rival ' + r.name + ' is arrested.', 'player');
+        return r.name + ' is behind bars. Their supporters will not forget.';
+      } },
+
     // ----- Leader: Military -----
     { id: 'mobilize', cd: 3, cat: 'Military', role: 'leader', name: 'Call up reserves', cost: 0.01,
       desc: 'Instantly call up reservists: manpower +25% (it drifts back to your conscription level over a few years).',

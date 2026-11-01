@@ -23,7 +23,7 @@ G.engine = (function () {
   // Starting wars, taking land and annexing nations make the world afraid of a nation.
   function addThreat(n, amount) {
     if (!n) return;
-    var k = (ownedByPlayer(n) ? diff().threat : 0.8) * (amount > 0 && G.laws ? G.laws.fx(n, 'threat') : 1);
+    var k = (ownedByPlayer(n) ? diff().threat : 0.8) * (amount > 0 && G.laws ? G.laws.fx(n, 'threat') * (G.cabinet.fx(n, 'threat') || 1) : 1);
     n.threat = U.clamp((n.threat || 0) + amount * k, 0, 150);
   }
   function threatLevel(n) {
@@ -253,6 +253,7 @@ G.engine = (function () {
     if (opts.role === 'corporate') { p.influence = 20; p.popularity = 15; p.wealth = 250; p.company = G.names.company(); }
     s.player = p;
     G.character.ensure(p);
+    G.cabinet.init();
     if (p.role === 'leader') n.lastElection = 2077;
 
     G.territory.init();
@@ -307,16 +308,30 @@ G.engine = (function () {
     // Treasury: surplus is saved, deficits become national debt.
     n.treasury += balance(n);
     var dr = debtRatio(n);
+    // Sovereign default: past 200% of GDP nobody lends any more. The debt is written down,
+    // but the nation pays for it with a crisis.
+    if (dr > 2) {
+      n.treasury = -n.gdp * 0.6;
+      n.stability = Math.max(0, n.stability - 15);
+      addMod(n, 'approval', -10, 3); addMod(n, 'growth', -0.03, 3);
+      alive().forEach(function (o) { if (o !== n) changeRelOneWay(o, n, -10); });
+      log('💸 ' + n.name + ' defaults on its national debt! Markets crash and the world loses trust.', ownedByPlayer(n) ? 'player' : 'major');
+      dr = debtRatio(n);
+    } else if (dr > 1.5 && ownedByPlayer(n) && !n.debtWarned) {
+      n.debtWarned = true;
+      log('⚠️ National debt has passed 150% of GDP. Above 200% the nation will default.', 'player');
+    }
+    if (dr < 1.2) n.debtWarned = false;
 
     // Approval and stability.
-    var apT = 50 + (growth - 0.02) * 400 + sat(welR, 0.05) * 320 - n.warYears * 2 * (ownedByPlayer(n) ? diff().weariness : 1) - (n.tax - 0.2) * 120 + modSum(n, 'approval') - G.military.conscApprovalPenalty(n) + G.research.bonus(n, 'approval') + G.laws.fx(n, 'approval');
+    var apT = 50 + (growth - 0.02) * 400 + sat(welR, 0.05) * 320 - n.warYears * 2 * (ownedByPlayer(n) ? diff().weariness : 1) - (n.tax - 0.2) * 120 + modSum(n, 'approval') - G.military.conscApprovalPenalty(n) + G.research.bonus(n, 'approval') + G.laws.fx(n, 'approval') + G.cabinet.fx(n, 'approval');
     if (n.gov === 'junta') apT += milR * 150;
     apT = U.clamp(apT, 5, 95);
     n.approval = U.clamp(n.approval + (apT - n.approval) * 0.25, 0, 100);
     // Empires are hard to hold: each conquered nation weighs on stability.
     var held = 0, all = S().nations;
     for (var hid in all) if (!all[hid].alive && all[hid].annexedBy === n.id) held++;
-    var stT = 28 + n.approval * 0.5 + g.stab - held * 4 - Math.max(0, dr - 0.9) * 15 - (war ? 6 : 0) + modSum(n, 'stability') + (n.gov === 'junta' ? milR * 200 : 0) + G.research.bonus(n, 'stability') + G.laws.fx(n, 'stability');
+    var stT = 28 + n.approval * 0.5 + g.stab - held * 4 - Math.max(0, dr - 0.9) * 15 - (war ? 6 : 0) + modSum(n, 'stability') + (n.gov === 'junta' ? milR * 200 : 0) + G.research.bonus(n, 'stability') + G.laws.fx(n, 'stability') + G.cabinet.fx(n, 'stability');
     stT = U.clamp(stT, 5, 98);
     n.stability = U.clamp(n.stability + (stT - n.stability) * 0.2, 0, 100);
     if (war) n.warYears++; else n.warYears = Math.max(0, n.warYears - 2);
@@ -361,12 +376,13 @@ G.engine = (function () {
       ['Technology (discoveries)', G.research.bonus(n, 'growth')],
       ['Space colonies', G.space ? G.space.growth(n) : 0],
       ['Laws & policies', G.laws ? G.laws.fx(n, 'growth') : 0],
+      ['Cabinet', G.cabinet ? G.cabinet.fx(n, 'growth') : 0],
       ['Rival momentum (difficulty)', ownedByPlayer(n) ? 0 : diff().aiGrowth],
       // Bonuses from actions, trade and events stack, but only up to +3%.
       ['Projects, trade & events', Math.min(0.03, modSum(n, 'growth'))],
       ['War', atWar(n) ? -0.025 : 0],
       ['Conscription (lost workforce)', -G.military.conscGrowthPenalty(n)],
-      ['National debt', -Math.max(0, debtRatio(n) - 0.9) * 0.02],
+      ['National debt', -Math.min(0.05, Math.max(0, debtRatio(n) - 0.9) * 0.02)],
       ['Instability', n.stability < 30 ? -(30 - n.stability) * 0.001 : 0]
     ];
     var raw = parts.reduce(function (a, p) { return a + p[1]; }, 0);
@@ -891,7 +907,7 @@ G.engine = (function () {
     if (g.elections && s.year - n.lastElection >= 4) {
       n.lastElection = s.year;
       if (p.role === 'leader') {
-        var score = (n.approval - 50) * 0.09 + (p.popularity - 40) * 0.03 + (p.influence - 40) * 0.015 + (G.character.standing('public') - 40) * 0.015;
+        var score = (n.approval - 50) * 0.09 + (p.popularity - 40) * 0.03 + (p.influence - 40) * 0.015 + (G.character.standing('public') - 40) * 0.015 - G.cabinet.electionPenalty(n);
         if (U.chance(U.sigmoid(score + 0.3))) {
           log('🗳️ You win re-election as ' + title(n) + ' of ' + n.name + '!', 'player');
           p.popularity = Math.min(100, p.popularity + 5);
@@ -907,7 +923,7 @@ G.engine = (function () {
           s.succession = { reason: 'election', text: 'You lost the election. You can fight on as leader of the opposition, or hand your legacy to an heir.' };
         }
       } else if (p.candidate) {
-        var sc = (p.popularity - (n.leader ? n.approval : 50)) * 0.07 + (p.influence - 35) * 0.04 + (G.character.standing('public') - 40) * 0.02;
+        var sc = (p.popularity - (n.leader ? n.approval : 50)) * 0.07 + (p.influence - 35) * 0.04 + (G.character.standing('public') - 40) * 0.02 - G.cabinet.electionPenalty(n);
         p.candidate = false;
         if (U.chance(U.sigmoid(sc))) {
           becomeLeader('🗳️ You win the election! ' + p.name + ' is the new ' + title(n) + ' of ' + n.name + '.');
@@ -950,6 +966,7 @@ G.engine = (function () {
     n.leader = null;
     if (gov(n).elections) n.lastElection = S().year;
     p.legacy += 10;
+    G.cabinet.newCabinet(n);
     log(text, 'player');
   }
 
@@ -1026,6 +1043,7 @@ G.engine = (function () {
       aiAlliances();
       threatYear();
       if (G.space) G.space.year();
+      if (G.cabinet) G.cabinet.year();
       rebellions();
       if (G.events.worldNews) G.events.worldNews();
       aiLeaders();
@@ -1106,6 +1124,7 @@ G.engine = (function () {
         while (n && !n.alive && n.annexedBy && guard++ < 30) n = st.nations[n.annexedBy];
         return n && n.alive ? n.id : null;
       });
+      if (G.cabinet) G.cabinet.ensure();
       // Older saves: war strength baselines were measured in a different unit.
       st.wars.forEach(function (w) { if (!w.v2) { w.aStart = power(st.nations[w.a]); w.bStart = power(st.nations[w.b], true); w.v2 = true; } });
       return true;

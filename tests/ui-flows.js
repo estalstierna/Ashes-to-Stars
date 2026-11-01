@@ -188,6 +188,26 @@ async function endTurn(page) {
     await page.screenshot({ path: '/tmp/laws.png' });
   }
 
+    console.log('Cabinet and rivals');
+  {
+    const { page, errors } = await newGame(browser, 'USA', 'leader');
+    await page.click('[data-act=homeview][data-arg=cabinet]');
+    check(await page.$('[data-act=cabreplace][data-arg=finance]'), 'cabinet shows five posts');
+    const before = await page.evaluate(() => G.state.cabinet.finance.name);
+    await page.click('[data-act=cabreplace][data-arg=finance]');
+    await page.click('#modal [data-act=cabappoint]');
+    check(await page.evaluate(() => G.state.cabinet.finance.name) !== before, 'a minister can be replaced');
+    const r = await page.evaluate(() => ({ id: G.state.rivals[0].id, power: G.state.rivals[0].power }));
+    await page.click('[data-act=rivalact][data-arg="rival-discredit|' + r.id + '"]');
+    check(await page.evaluate(id => (G.state.rivals.find(x => x.id === id) || { power: 0 }).power, r.id) < r.power, 'discrediting a rival lowers their power');
+    for (let i = 0; i < 3; i++) await endTurn(page);
+    check(await page.evaluate(() => !!G.state.cabinet && G.state.rivals.length >= 2), 'cabinet and rivals persist over turns');
+    check(errors.length === 0, 'no page errors ' + errors.join('; '));
+    await page.click('[data-act=tab][data-arg=home]'); await page.click('[data-act=homeview][data-arg=cabinet]');
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: '/tmp/cabinet.png' });
+  }
+
     console.log('Economy charts and budget');
   {
     const { page, errors } = await newGame(browser, 'USA', 'leader');
