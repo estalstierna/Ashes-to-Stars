@@ -51,8 +51,7 @@ const path = require('path');
   await page.click('[data-act=nation][data-arg=RUS]');
   await shot('08-nation');
   await page.click('#modal [data-act=close]');
-  await page.click('[data-act=tab][data-arg=sci]');
-  await page.click('[data-act=sciview][data-arg=space]');
+  await page.click('[data-act=tab][data-arg=space]');
   await shot('09-space');
   for (let t = 0; t < 30; t++) {
     await clearModals();

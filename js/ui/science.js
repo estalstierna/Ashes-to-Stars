@@ -8,12 +8,8 @@
   function resumePending() { K.resumePending(); }
 
   // ---------- science: research tree + space race ----------
-  on('sciview', function (v) { K.view.sci = v; keepScroll(render); });
   function scienceTab() {
-    var h = '<div class="seg" style="margin-bottom:12px">' + [['research', '🔬 Research'], ['space', '🚀 Space race']].map(function (x) {
-      return '<button class="' + (K.view.sci === x[0] ? 'sel' : '') + '" data-act="sciview" data-arg="' + x[0] + '">' + x[1] + '</button>';
-    }).join('') + '</div>';
-    return h + (K.view.sci === 'space' ? spaceTab() : researchTab());
+    return researchTab();
   }
 
   function researchTab() {
@@ -87,25 +83,8 @@
     if (G.research.start(n, id)) { E.save(); keepScroll(render); toast('Researching ' + t.name + '.'); }
   });
 
-  function spaceTab() {
-    var s = S(), me = E.pn(), mi = E.milestoneIndex(me);
-    var h = '<div class="card"><h3>The Space Race</h3>';
-    D.milestones.forEach(function (m, i) {
-      var f = s.firsts[i];
-      h += '<div class="ms ' + (i <= mi ? 'done' : i === mi + 1 ? 'next' : '') + '"><div class="n">' + (i <= mi ? '✓' : i) + '</div><div>' +
-        '<div><b>' + m.name + '</b> <span class="small muted">' + U.num(m.points) + ' pts</span></div>' +
-        '<div class="small muted">' + esc(m.desc) + '</div>' +
-        (f ? '<div class="small warn">First: ' + esc(E.nation(f.nation).short) + ' (' + f.year + ')</div>' : '') +
-        '</div></div>';
-    });
-    h += '</div><div class="card"><h3>Leaderboard</h3>';
-    E.alive().slice().sort(function (a, b) { return b.space - a.space; }).slice(0, 8).forEach(function (n) {
-      h += '<div class="row small" style="padding:4px 0"><span><span class="dot" style="background:' + n.color + '"></span>' + esc(n.short) + (n === me ? ' (you)' : '') + '</span><span>' + U.num(n.space) + ' pts</span></div>';
-    });
-    return h + '</div>';
-  }
+
 
 
   K.tabs.sci = { render: scienceTab };
-  K.tabs.space = K.tabs.sci;
 })();

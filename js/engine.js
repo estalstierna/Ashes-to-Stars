@@ -256,6 +256,7 @@ G.engine = (function () {
     if (p.role === 'leader') n.lastElection = 2077;
 
     G.territory.init();
+    if (G.space) G.space.init();
     recordHistory();
     log('The Treaty of Reykjavík ends the Long War. One in three humans is gone. The rebuilding begins.', 'major');
     log(p.name + ' begins their story as ' + roleTitle() + ' of ' + n.name + '.', 'player');
@@ -358,6 +359,7 @@ G.engine = (function () {
       ['Catching up to potential', 0.05 * (1 - pc / ceil)],
       ['Economy budget (investment)', sat(f.econ / n.gdp, 0.06) * 0.6],
       ['Technology (discoveries)', G.research.bonus(n, 'growth')],
+      ['Space colonies', G.space ? G.space.growth(n) : 0],
       ['Rival momentum (difficulty)', ownedByPlayer(n) ? 0 : diff().aiGrowth],
       // Bonuses from actions, trade and events stack, but only up to +3%.
       ['Projects, trade & events', Math.min(0.03, modSum(n, 'growth'))],
@@ -1021,6 +1023,7 @@ G.engine = (function () {
       aiWarDecisions();
       aiAlliances();
       threatYear();
+      if (G.space) G.space.year();
       rebellions();
       if (G.events.worldNews) G.events.worldNews();
       aiLeaders();

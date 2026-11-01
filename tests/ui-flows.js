@@ -151,7 +151,27 @@ async function endTurn(page) {
     check(errors.length === 0, 'no page errors ' + errors.join('; '));
   }
 
-  console.log('Economy charts and budget');
+  console.log('Space: the Moon and colonies');
+  {
+    const { page, errors } = await newGame(browser, 'USA', 'leader');
+    await page.click('[data-act=tab][data-arg=space]');
+    check(await page.$('#sys-map [data-body=moon]'), 'solar system map renders');
+    await page.locator('#sys-map [data-body=moon] circle').first().dispatchEvent('click');
+    const txt = await page.textContent('#modal-box');
+    check(txt.includes('Artemis Colony') && txt.includes('Shackleton'), 'the Moon shows its story and settlements');
+    await page.click('#modal [data-act=close]');
+    await page.evaluate(() => { const c = G.space.of(G.engine.pn())[0]; c.grew = G.state.year - 6; G.ui.render(); });
+    const lvl = await page.evaluate(() => G.space.of(G.engine.pn())[0].level);
+    await page.click('[data-act=colexpand]');
+    check(await page.evaluate(() => G.space.of(G.engine.pn())[0].level) === lvl + 1, 'a colony can be expanded');
+    await page.evaluate(() => { G.engine.pn().space = 400; G.ui.render(); }); // Mars unlocked
+    await page.locator('#sys-map [data-body=mars] circle').first().dispatchEvent('click');
+    await page.click('#modal [data-act=colfound]');
+    check(await page.evaluate(() => G.space.of(G.engine.pn()).some(c => c.body === 'mars')), 'a colony can be founded on Mars');
+    check(errors.length === 0, 'no page errors ' + errors.join('; '));
+  }
+
+    console.log('Economy charts and budget');
   {
     const { page, errors } = await newGame(browser, 'USA', 'leader');
     for (let i = 0; i < 3; i++) await endTurn(page);

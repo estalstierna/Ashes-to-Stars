@@ -134,7 +134,7 @@ G.ui = (function () {
       }).join('') + '</div></div></div>';
     if (t.after) t.after();
   }
-  var TABS = [['home', '🏛️', 'Home'], ['act', '⚡', 'Actions'], ['econ', '💰', 'Economy'], ['mil', '🎖️', 'Military'], ['world', '🌍', 'World'], ['sci', '🔬', 'Science'], ['log', '📰', 'News']];
+  var TABS = [['home', '🏛️', 'Home'], ['act', '⚡', 'Actions'], ['econ', '💰', 'Economy'], ['mil', '🎖️', 'Military'], ['world', '🌍', 'World'], ['sci', '🔬', 'Science'], ['space', '🚀', 'Space'], ['log', '📰', 'News']];
   on('tab', function (t) { K.view.tab = t; render(); window.scrollTo(0, 0); });
 
   // ---------- menu ----------

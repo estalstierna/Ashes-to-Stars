@@ -1,7 +1,7 @@
 // Headless simulation: plays full games with random choices to catch crashes, NaN and balance issues.
 // Usage: node tests/sim.js [games] [untilYear]
 const fs = require('fs'), path = require('path'), vm = require('vm');
-const files = ['util', 'names', 'data', 'engine', 'military', 'research', 'character', 'mapdata', 'territory', 'actions', 'events', 'events-extra', 'war'];
+const files = ['util', 'names', 'data', 'engine', 'military', 'research', 'character', 'mapdata', 'territory', 'actions', 'events', 'events-extra', 'war', 'space'];
 function boot() {
   const store = {};
   const ctx = { console, Math, JSON, Object, Array, String, Number, Date,

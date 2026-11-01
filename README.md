@@ -40,7 +40,11 @@ A text-based grand strategy RPG for mobile browsers.
   - The player gets a call to arms when a partner is attacked, and a request to join when a full ally attacks someone.
   - The Diplomacy view lists your treaties, the chance each partner would defend you against your worst rival, and all alliances in the world.
 - **Economy:** set taxes and spending per sector (military, economy, welfare, science, space) and see your surplus or deficit live. Deficits become national debt, with interest that rises as debt grows. Also trade agreements and Earth restoration.
-- **Space race:** 12 milestones, from Lunar Outpost to Mars, the asteroid belt, Titan, a Dyson swarm, exoplanet colonies and Kardashev II.
+- **Space tab:**
+  - A tappable map of the solar system with the Moon, Mars, Ceres and the Belt, Europa, Ganymede, Titan, Venus' cloud cities, Mercury and Proxima b. Each has facts and lore; the Moon has the most, including Artemis Colony (USA, 2065) and Shackleton Outpost (China, 2072).
+  - Colonies are real places. You found them, expand them through five levels (outpost to metropolis), and they add space progress, research and growth. Big, distant colonies may demand independence.
+  - AI nations race you for every world.
+  - The 12-step space race, from Lunar Outpost to Kardashev II, also lives here.
 - **Characters age and die.** When yours dies, loses an election or is overthrown, you continue as an heir or protégé.
 - **Turn length grows with time:** 1 year per turn until 2150, then 5 years, then 10, then 25.
 - **Procedural content:**
@@ -79,12 +83,13 @@ To install it on a phone, open the URL and choose **Share → Add to Home Screen
 | `js/engine.js` | Simulation: economy, wars, elections, coups, succession, saving |
 | `js/military.js` | Manpower, branches, military power and military projects |
 | `js/war.js` | War goals, front lines and peace negotiations |
+| `js/space.js` | Solar system bodies and colonies |
 | `js/actions.js` | Everything the player can do, per role |
 | `js/events.js` | Procedural events and the event queue |
 | `js/events-extra.js` | More events, plus yearly world news |
 | `js/ui/kit.js` | Shared UI helpers: modals, toasts, event delegation, shared view state |
 | `js/ui/main.js` | Title screen, character creation, the frame around the tabs, turn flow, events and succession |
-| `js/ui/home.js`, `actions.js`, `economy.js`, `military.js`, `world.js`, `science.js`, `news.js` | One file per tab |
+| `js/ui/home.js`, `actions.js`, `economy.js`, `military.js`, `world.js`, `science.js`, `space.js`, `news.js` | One file per tab |
 | `js/names.js` | Procedural name generator, organised by culture |
 | `js/mapdata.js` | Generated map provinces (from `tools/build-map.js`) |
 | `js/territory.js` | Province ownership: cessions, annexations and rebellions on the map |

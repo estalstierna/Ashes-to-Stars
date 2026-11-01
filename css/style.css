@@ -161,3 +161,12 @@ label.field { display: block; margin: 16px 0 6px; font-size: 13px; color: var(--
 .tabs button { font-size: 10px; }
 .action.sel-action { border-color: var(--accent2); box-shadow: 0 0 0 1px var(--accent2) inset; }
 .btn.sm { white-space: nowrap; }
+
+/* Space tab */
+.sys-wrap { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); margin-top: 6px; }
+#sys-map { width: 100%; height: auto; display: block; }
+#sys-map .sys-body { cursor: pointer; }
+.sys-label { fill: #e6ebf3; font-size: 11px; font-weight: 700; text-anchor: middle; paint-order: stroke; stroke: #05080f; stroke-width: 3px; }
+.sys-label.locked { fill: #8b97ab; font-weight: 500; }
+.tabs button { font-size: 9.5px; }
+.tabs button .i { font-size: 18px; }
