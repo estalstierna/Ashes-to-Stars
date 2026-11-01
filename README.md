@@ -1,0 +1,46 @@
+# Ashes to Stars: 2077
+
+A text-based grand strategy RPG for mobile browsers.
+
+**2077.** The Long War (2062–2077) is over, and a third of humanity is gone. Choose a name, gender, nation and role, then rebuild the world, burn it again, or reach for the stars. The game can run for centuries, to the year 3000 and beyond. Can you reach Kardashev II, the "Space God" milestone?
+
+## Features (prototype v0.1)
+
+- **16 nations**, from superpowers (USA, European Federation, China, India) to new and small states (Republic of Sweden, Cascadia, Siberian Free Republic, Free City of Singapore…).
+- **4 roles**:
+  - **Head of State**: control the budget and run the nation.
+  - **Politician**: win elections or plot palace intrigue.
+  - **General**: stage a coup.
+  - **Corporate Executive**: buy the state.
+- **Politics:** elections, coups, government changes, approval and stability.
+- **Military:** wars with war scores, offensives, peace deals, territory changes, annexations and rebellions.
+- **Economy:** a 5-way budget (military, economy, welfare, science, space), taxes, trade agreements and Earth restoration.
+- **Space race:** 12 milestones, from Lunar Outpost to Mars, the asteroid belt, Titan, a Dyson swarm, exoplanet colonies and Kardashev II.
+- **Characters age and die.** When yours dies, loses an election or is overthrown, you continue as an heir or protégé.
+- **Turn length grows with time:** 1 year per turn until 2150, then 5 years, then 10, then 25.
+- **Procedural content:** about 35 events with randomised nations, people, companies and places. AI nations act on their own and AI leaders rise and fall.
+- Works offline, autosaves, and can be installed to the home screen as an app (PWA).
+
+## Play
+
+It is a static site with no build step and no dependencies. Open `index.html` in a browser, or host the folder on any static host. GitHub Pages works: **Settings → Pages → Deploy from a branch**, then pick the branch and the `/ (root)` folder.
+
+To install it on a phone, open the URL and choose **Share → Add to Home Screen** (iOS) or **Install app** (Android/Chrome).
+
+## Project layout
+
+| File | Purpose |
+|---|---|
+| `js/data.js` | Nations, governments, space milestones and lore |
+| `js/engine.js` | Simulation: economy, wars, elections, coups, succession, saving |
+| `js/actions.js` | Everything the player can do, per role |
+| `js/events.js` | Procedural events |
+| `js/ui.js` | Screens and interface |
+| `js/names.js` | Procedural name generator, organised by culture |
+
+## Tests
+
+```
+node tests/sim.js 10 3000     # plays 10 full random games to year 3000; checks for crashes/NaN and prints balance data
+node tests/ui-smoke.js /tmp/shots   # mobile browser smoke test with screenshots (needs Playwright)
+```
