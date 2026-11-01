@@ -28,7 +28,8 @@ A text-based grand strategy RPG for mobile browsers.
   - Real terrain (NASA Blue Marble) with the borders of the 2077 nations.
   - Drag to pan, pinch to zoom, and tap a nation to open its details.
   - Three modes: Nations, Terrain and Diplomacy (coloured by your relations).
-  - Conquered land takes on the conqueror's colour.
+  - The world is divided into about 500 provinces. When a nation cedes land in a peace deal, the provinces along the border change hands, so the map shows partial losses too.
+  - Fully conquered nations take on the conqueror's colour, and rebels win their old provinces back.
   - A brown haze shows war damage to the Earth and clears as the planet heals.
 - Works offline, autosaves, and can be installed to the home screen as an app (PWA).
 
@@ -49,7 +50,8 @@ To install it on a phone, open the URL and choose **Share → Add to Home Screen
 | `js/events.js` | Procedural events |
 | `js/ui.js` | Screens and interface |
 | `js/names.js` | Procedural name generator, organised by culture |
-| `js/mapdata.js` | Generated map borders (from `tools/build-map.js`) |
+| `js/mapdata.js` | Generated map provinces (from `tools/build-map.js`) |
+| `js/territory.js` | Province ownership: cessions, annexations and rebellions on the map |
 | `img/earth.jpg` | Earth texture |
 
 ## Tests
@@ -61,7 +63,7 @@ node tests/ui-smoke.js /tmp/shots   # mobile browser smoke test with screenshots
 
 ## Rebuilding the map
 
-`js/mapdata.js` is generated: it assigns real countries to the fictional 2077 nations and merges their borders.
+`js/mapdata.js` is generated. It assigns real countries to the fictional 2077 nations, then splits large countries into provinces on an 8° grid. It also records which provinces border each other.
 
 ```
 npm i world-atlas@2.0.2 topojson-client@3.1.0 polygon-clipping@0.15.7   # in any folder

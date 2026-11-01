@@ -1,7 +1,7 @@
 // Headless simulation: plays full games with random choices to catch crashes, NaN and balance issues.
 // Usage: node tests/sim.js [games] [untilYear]
 const fs = require('fs'), path = require('path'), vm = require('vm');
-const files = ['util', 'names', 'data', 'engine', 'military', 'actions', 'events'];
+const files = ['util', 'names', 'data', 'engine', 'military', 'mapdata', 'territory', 'actions', 'events'];
 function boot() {
   const store = {};
   const ctx = { console, Math, JSON, Object, Array, String, Number, Date,
@@ -47,10 +47,14 @@ for (let g = 0; g < games; g++) {
           treasury: n.treasury, men: n.mil.men, power: E.power(n), equipment: G.military.equipment(n) };
         for (const k in vals) if (!isFinite(vals[k])) throw new Error(`NaN ${k} in ${n.id} at ${G.state.year}`);
       }
+      G.state.prov.forEach((o, i) => {
+        if (o && !(G.state.nations[o] && G.state.nations[o].alive)) throw new Error(`Province ${i} owned by dead/unknown ${o} at ${G.state.year}`);
+      });
       for (const y of [2100, 2200, 2500, 3000]) if (!checkpoints[y] && G.state.year >= y) {
         const top = E.alive().slice().sort((a, b) => b.gdp - a.gdp).slice(0, 3).map(n => `${n.id}:${G.util.money(n.gdp)}/t${n.tech.toFixed(0)}/${G.data.milestones[E.milestoneIndex(n)].name.split(' ')[0]}`);
         const mil = E.alive().slice().sort((a, b) => E.power(b) - E.power(a)).slice(0, 3).map(n => `${n.id}:${G.util.num(E.power(n))}/${G.util.num(n.mil.men * 1000)}men/${n.mil.done.length}proj/debt${Math.round(E.debtRatio(n) * 100)}%`);
-        checkpoints[y] = `${y}: nations=${E.alive().length} wars=${G.state.wars.length} earth=${G.state.earth.toFixed(0)} pop=${G.util.people(E.worldPop())} top=${top.join(' ')}\n      mil=${mil.join(' ')}`;
+        const changed = G.state.prov.filter((o, i) => o !== G.mapdata.provinces[i].n).length;
+        checkpoints[y] = `${y}: provincesChanged=${changed} nations=${E.alive().length} wars=${G.state.wars.length} earth=${G.state.earth.toFixed(0)} pop=${G.util.people(E.worldPop())} top=${top.join(' ')}\n      mil=${mil.join(' ')}`;
       }
     }
     const firsts = Object.keys(G.state.firsts).map(i => `${i}@${G.state.firsts[i].year}`).join(' ');

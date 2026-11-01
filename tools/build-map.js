@@ -75,30 +75,85 @@ const feats = feature(topo, topo.objects.countries).features;
 const byName = {};
 feats.forEach(f => { byName[f.properties.name] = fixAntimeridian(coords(f)); });
 
+// ---------- 1. assign real countries to 2077 nations ----------
 const used = new Set();
-const geom = {};
-function add(id, mp) { geom[id] = geom[id] ? pc.union(geom[id], mp) : mp; }
+const pieces = []; // { n: nation id, mp: multipolygon }
+let unclaimed = [];
 for (const id in ASSIGN) for (const name of ASSIGN[id]) {
   if (!byName[name]) throw new Error('Unknown country ' + name);
   used.add(name);
-  add(id, byName[name]);
+  if (id === '_none') unclaimed = pc.union(unclaimed, byName[name]);
+  else if (name !== 'United States of America') pieces.push({ n: id, mp: byName[name] });
 }
 // Russia: west of the Urals stays Russian, the east is the Siberian Free Republic.
 used.add('Russia');
 const urals = box(0, 30, 60, 85);
-add('RUS', pc.intersection(byName.Russia, urals));
-add('SIB', pc.difference(byName.Russia, urals));
+pieces.push({ n: 'RUS', mp: pc.intersection(byName.Russia, urals) });
+pieces.push({ n: 'SIB', mp: pc.difference(byName.Russia, urals) });
 // Cascadia: the US Pacific Northwest + western Canada. The rest of Canada joined the USA.
 used.add('Canada');
 const pnw = box(-125.5, 42, -116.5, 49.5), wcan = box(-141, 48, -114, 70);
-add('CAS', pc.intersection(geom.USA, pnw));
-add('CAS', pc.intersection(byName.Canada, wcan));
-geom.USA = pc.difference(geom.USA, pnw);
-add('USA', pc.difference(byName.Canada, wcan));
+const usa = byName['United States of America'];
+pieces.push({ n: 'CAS', mp: pc.intersection(usa, pnw) });
+pieces.push({ n: 'CAS', mp: pc.intersection(byName.Canada, wcan) });
+pieces.push({ n: 'USA', mp: pc.difference(usa, pnw) });
+pieces.push({ n: 'USA', mp: pc.difference(byName.Canada, wcan) });
 
 const missing = Object.keys(byName).filter(n => !used.has(n));
 if (missing.length) throw new Error('Unassigned: ' + missing.join(', '));
 
+// ---------- 2. split big countries into provinces on a 10-degree grid ----------
+function ringArea(r) { let a = 0; for (let i = 0; i < r.length - 1; i++) a += r[i][0] * r[i + 1][1] - r[i + 1][0] * r[i][1]; return a / 2; }
+function area(mp) { return mp.reduce((s, poly) => s + Math.abs(ringArea(poly[0])) - poly.slice(1).reduce((h, r) => h + Math.abs(ringArea(r)), 0), 0); }
+function centroid(mp) {
+  let A = 0, X = 0, Y = 0;
+  mp.forEach(poly => {
+    const r = poly[0];
+    for (let i = 0; i < r.length - 1; i++) {
+      const f = r[i][0] * r[i + 1][1] - r[i + 1][0] * r[i][1];
+      A += f; X += (r[i][0] + r[i + 1][0]) * f; Y += (r[i][1] + r[i + 1][1]) * f;
+    }
+  });
+  if (Math.abs(A) < 1e-9) { const p = mp[0][0][0]; return p; }
+  return [X / (3 * A), Y / (3 * A)];
+}
+function bbox(mp) {
+  let b = [180, 90, -180, -90];
+  mp.forEach(poly => poly[0].forEach(p => { b[0] = Math.min(b[0], p[0]); b[1] = Math.min(b[1], p[1]); b[2] = Math.max(b[2], p[0]); b[3] = Math.max(b[3], p[1]); }));
+  return b;
+}
+const CELL = 8, SPLIT_AREA = 60, SLIVER = 8;
+const provinces = [];
+pieces.forEach(pc0 => {
+  if (!pc0.mp.length) return;
+  if (area(pc0.mp) <= SPLIT_AREA) { provinces.push({ n: pc0.n, mp: pc0.mp }); return; }
+  const b = bbox(pc0.mp), cells = [];
+  for (let x = Math.floor(b[0] / CELL) * CELL; x < b[2]; x += CELL)
+    for (let y = Math.floor(b[1] / CELL) * CELL; y < b[3]; y += CELL) {
+      const part = pc.intersection(pc0.mp, box(x, y, x + CELL, y + CELL));
+      if (part.length) cells.push({ n: pc0.n, mp: part, a: area(part), c: centroid(part) });
+    }
+  // Merge tiny slivers into the nearest proper cell of the same country.
+  const big = cells.filter(c => c.a >= SLIVER), small = cells.filter(c => c.a < SLIVER);
+  if (!big.length) { provinces.push({ n: pc0.n, mp: pc0.mp }); return; }
+  small.forEach(sc => {
+    let best = big[0], bd = 1e9;
+    big.forEach(bc => { const d = Math.hypot(bc.c[0] - sc.c[0], bc.c[1] - sc.c[1]); if (d < bd) { bd = d; best = bc; } });
+    best.mp = best.mp.concat(sc.mp); // disjoint pieces: a plain multipolygon concat is enough
+  });
+  big.forEach(c => provinces.push({ n: c.n, mp: c.mp }));
+});
+
+// ---------- 3. adjacency via shared vertices ----------
+const key = p => Math.round(p[0] * 1000) + ':' + Math.round(p[1] * 1000);
+const owners = new Map();
+provinces.forEach((pv, i) => pv.mp.forEach(poly => poly.forEach(r => r.forEach(p => {
+  const k = key(p); let s = owners.get(k); if (!s) owners.set(k, s = new Set()); s.add(i);
+}))));
+const adj = provinces.map(() => new Set());
+owners.forEach(s => { if (s.size > 1) s.forEach(a => s.forEach(b => { if (a !== b) adj[a].add(b); })); });
+
+// ---------- 4. output ----------
 const px = lon => (lon + 180) / 360 * W, py = lat => (90 - lat) / 180 * H;
 const r1 = v => Math.round(v * 10) / 10;
 function toPath(mp) {
@@ -112,12 +167,75 @@ function toPath(mp) {
     return out + 'Z';
   }).join('')).join('');
 }
+function inside(pt, mp) {
+  return mp.some(poly => {
+    let c = false;
+    poly.forEach(r => { for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      if ((r[i][1] > pt[1]) !== (r[j][1] > pt[1]) && pt[0] < (r[j][0] - r[i][0]) * (pt[1] - r[i][1]) / (r[j][1] - r[i][1]) + r[i][0]) c = !c;
+    } });
+    return c;
+  });
+}
 
-const out = { w: W, h: H, regions: {}, unclaimed: toPath(geom._none), labels: {} };
-for (const id in geom) if (id !== '_none') out.regions[id] = toPath(geom[id]);
-for (const id in LABELS) out.labels[id] = [r1(px(LABELS[id][0])), r1(py(LABELS[id][1]))];
+// Project + round every ring, then fix "T-junctions": if a vertex of one province lies on an edge
+// of another, insert it there too, so shared borders have identical segments on both sides.
+const projRings = provinces.map(pv => pv.mp.map(poly => poly.map(ring => {
+  const out = [];
+  ring.forEach(p => { const q = [r1(px(p[0])), r1(py(p[1]))]; const l = out[out.length - 1]; if (!l || l[0] !== q[0] || l[1] !== q[1]) out.push(q); });
+  if (out.length > 1 && out[0][0] === out[out.length - 1][0] && out[0][1] === out[out.length - 1][1]) out.pop();
+  return out;
+})));
+const HC = 2, hash = new Map();
+projRings.forEach(mp => mp.forEach(poly => poly.forEach(r => r.forEach(p => {
+  const k = Math.floor(p[0] / HC) + ':' + Math.floor(p[1] / HC);
+  let a = hash.get(k); if (!a) hash.set(k, a = []); a.push(p);
+}))));
+let inserted = 0;
+function fixRing(r) {
+  const out = [];
+  for (let i = 0; i < r.length; i++) {
+    const a = r[i], b = r[(i + 1) % r.length];
+    out.push(a);
+    const dx = b[0] - a[0], dy = b[1] - a[1], len2 = dx * dx + dy * dy;
+    if (len2 < 1e-9) continue;
+    const found = new Map();
+    for (let gx = Math.floor(Math.min(a[0], b[0]) / HC); gx <= Math.floor(Math.max(a[0], b[0]) / HC); gx++)
+      for (let gy = Math.floor(Math.min(a[1], b[1]) / HC); gy <= Math.floor(Math.max(a[1], b[1]) / HC); gy++)
+        (hash.get(gx + ':' + gy) || []).forEach(p => {
+          const t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len2;
+          if (t <= 1e-6 || t >= 1 - 1e-6) return;
+          const ex = a[0] + t * dx - p[0], ey = a[1] + t * dy - p[1];
+          if (ex * ex + ey * ey < 0.0144) found.set(p[0] + ',' + p[1], { p, t });
+        });
+    [...found.values()].sort((u, v) => u.t - v.t).forEach(f => { out.push(f.p); inserted++; });
+  }
+  return out;
+}
+const ringsToPath = mp => mp.map(poly => poly.map(r => 'M' + fixRing(r).map(p => p[0] + ',' + p[1]).join('L') + 'Z').join('')).join('');
+
+const out = { w: W, h: H, unclaimed: toPath(unclaimed), labels: {}, labelProv: {}, provinces: [] };
+provinces.forEach((pv, i) => {
+  const c = centroid(pv.mp);
+  // Weight ~ real land area (degrees shrink towards the poles).
+  const weight = area(pv.mp) * Math.cos(c[1] * Math.PI / 180);
+  out.provinces.push({ n: pv.n, d: ringsToPath(projRings[i]), c: [r1(px(c[0])), r1(py(c[1]))], w: Math.round(weight * 10) / 10, a: [...adj[i]] });
+});
+console.log('T-junction vertices inserted:', inserted);
+for (const id in LABELS) {
+  out.labels[id] = [r1(px(LABELS[id][0])), r1(py(LABELS[id][1]))];
+  let idx = provinces.findIndex(pv => pv.n === id && inside(LABELS[id], pv.mp));
+  if (idx < 0) { // label over water: nearest province of that nation
+    let bd = 1e9;
+    out.provinces.forEach((pv, i) => { if (pv.n !== id) return; const d = Math.hypot(pv.c[0] - out.labels[id][0], pv.c[1] - out.labels[id][1]); if (d < bd) { bd = d; idx = i; } });
+  }
+  out.labelProv[id] = idx;
+}
 
 const file = path.join(__dirname, '..', 'js', 'mapdata.js');
 fs.writeFileSync(file, '// Generated by tools/build-map.js from Natural Earth (world-atlas). Do not edit by hand.\n' +
   'var G = window.G || (window.G = {});\nG.mapdata = ' + JSON.stringify(out) + ';\n');
-console.log('wrote', file, (fs.statSync(file).size / 1024).toFixed(0) + ' KB', Object.keys(out.regions).join(' '));
+const per = {};
+out.provinces.forEach(p => { per[p.n] = (per[p.n] || 0) + 1; });
+const lonely = out.provinces.filter(p => !p.a.length).length;
+console.log('wrote', file, (fs.statSync(file).size / 1024).toFixed(0) + ' KB,', out.provinces.length, 'provinces,', lonely, 'without neighbours');
+console.log(JSON.stringify(per), 'labelProv', JSON.stringify(out.labelProv));

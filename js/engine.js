@@ -191,6 +191,7 @@ G.engine = (function () {
     s.player = p;
     if (p.role === 'leader') n.lastElection = 2077;
 
+    G.territory.init();
     log('The Treaty of Reykjavík ends the Long War. One in three humans is gone. The rebuilding begins.', 'major');
     log(p.name + ' begins their story as ' + roleTitle() + ' of ' + n.name + '.', 'player');
     return s;
@@ -368,6 +369,20 @@ G.engine = (function () {
     addMod(winner, 'approval', 8, 3);
     addMod(loser, 'approval', -10, 3);
     addMod(loser, 'stability', -8, 3);
+    // Move provinces on the map, starting at the shared border.
+    var moved = G.territory.cede(winner.id, loser.id, frac);
+    if (moved) syncBorders(winner);
+    return moved;
+  }
+
+  // New land can create new neighbours.
+  function syncBorders(n) {
+    G.territory.bordering(n.id).forEach(function (id) {
+      var o = nation(id);
+      if (!o || !o.alive) return;
+      if (n.neighbors.indexOf(id) < 0) n.neighbors.push(id);
+      if (o.neighbors.indexOf(n.id) < 0) o.neighbors.push(n.id);
+    });
   }
 
   function capitulate(w, winner, loser) {
@@ -396,6 +411,7 @@ G.engine = (function () {
     });
     loser.alive = false;
     loser.annexedBy = winner.id;
+    G.territory.annex(winner.id, loser.id);
     S().wars.filter(function (x) { return x.a === loser.id || x.b === loser.id; }).forEach(function (x) { endWar(x); });
     var p = S().player;
     if (p.nation === loser.id) {
@@ -435,6 +451,7 @@ G.engine = (function () {
       if (d.neighbors.indexOf(owner.id) < 0) d.neighbors.push(owner.id);
       if (owner.neighbors.indexOf(d.id) < 0) owner.neighbors.push(d.id);
       changeRel(d, owner, -50);
+      G.territory.restore(d.id, owner.id);
       addPact(d, owner, 'nap', 5);
       var pid = S().player.nation;
       log('🔥 ' + d.name + ' rises from the ashes and declares independence from ' + owner.name + '!', owner.id === pid ? 'player' : 'major');
@@ -691,6 +708,12 @@ G.engine = (function () {
         if (!sn.spend) syncSpend(sn);
         if (!sn.mil) { G.military.init(sn, funds(sn).mil, 0.8); delete sn.army; }
       }
+      // Older saves: no province map yet. Start from the original borders, applying full annexations.
+      if (!st.prov) G.territory.init(function (id) {
+        var n = st.nations[id], guard = 0;
+        while (n && !n.alive && n.annexedBy && guard++ < 30) n = st.nations[n.annexedBy];
+        return n && n.alive ? n.id : null;
+      });
       // Older saves: war strength baselines were measured in a different unit.
       st.wars.forEach(function (w) { if (!w.v2) { w.aStart = power(st.nations[w.a]); w.bStart = power(st.nations[w.b], true); w.v2 = true; } });
       return true;

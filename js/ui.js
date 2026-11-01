@@ -503,18 +503,26 @@ G.ui = (function () {
     var ash = ((100 - s.earth) / 100 * 0.55).toFixed(2);
     var op = mapMode === 'terrain' ? 0.1 : mapMode === 'diplomacy' ? 0.5 : 0.42;
     var regions = '', labels = '';
-    Object.keys(MAP.regions).forEach(function (id) {
-      var o = ownerOf(id);
-      if (!o) return;
+    // Provinces grouped by owner. The fill group is drawn opaque and faded as a whole,
+    // so shared province edges do not show as seams; a second layer draws only outer borders.
+    var byOwner = {};
+    (s.prov || []).forEach(function (o, i) { if (o) (byOwner[o] = byOwner[o] || []).push(i); });
+    var fills = '', lines = '';
+    Object.keys(byOwner).forEach(function (oid) {
+      var o = E.nation(oid);
+      if (!o || !o.alive) return;
       var fill = mapMode === 'diplomacy' ? diploColor(o) : o.color;
       var war = o !== me && E.warBetween(me, o);
       var stroke = o === me ? '#ffffff' : war ? '#ff3b30' : fill;
-      regions += '<path data-nation="' + o.id + '" d="' + MAP.regions[id] + '" fill="' + fill + '" fill-opacity="' + op + '" stroke="' + stroke + '" stroke-width="' + (o === me ? 2 : 1) + '"' +
-        (war ? ' stroke-dasharray="4 3"' : '') + ' stroke-opacity="0.9" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>';
+      var d = byOwner[oid].map(function (i) { return MAP.provinces[i].d; }).join('');
+      fills += '<path data-nation="' + oid + '" d="' + d + '" fill="' + fill + '" stroke="' + fill + '" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>';
+      // Outer border only: the edge filter keeps a thin band along the outside of the owner's whole area.
+      lines += '<g filter="url(#map-edge)" opacity="' + (o === me ? 0.95 : war ? 0.9 : 0.7) + '"><path d="' + d + '" fill="' + stroke + '" stroke="' + stroke + '" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></g>';
     });
+    regions = '<g opacity="' + op + '">' + fills + '</g><g pointer-events="none">' + lines + '</g>';
     // Label priority: you first, then by GDP (used to hide overlapping labels).
     E.alive().slice().sort(function (a, b) { return (b === me) - (a === me) || b.gdp - a.gdp; }).forEach(function (n, pri) {
-      var p = MAP.labels[n.id];
+      var p = G.territory.center(n.id);
       if (!p) return;
       var atWar = E.atWar(n);
       if (n.id === 'SGP') regions += '<circle data-nation="SGP" class="map-dot" cx="' + p[0] + '" cy="' + p[1] + '" r="3" fill="' + (mapMode === 'diplomacy' ? diploColor(n) : n.color) + '" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"/>';
@@ -522,6 +530,8 @@ G.ui = (function () {
     });
     return '<div class="map-wrap" id="map-wrap">' +
       '<svg id="world-map" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">' +
+      '<defs><filter id="map-edge" x="-5%" y="-5%" width="110%" height="110%"><feMorphology id="map-erode" in="SourceAlpha" operator="erode" radius="1"/>' +
+      '<feComposite in="SourceGraphic" operator="out"/></filter></defs>' +
       '<rect x="-2000" y="-2000" width="5000" height="4500" fill="#06101f"/>' +
       '<image href="img/earth.jpg" x="0" y="0" width="' + MAP.w + '" height="' + MAP.h + '" preserveAspectRatio="none"/>' +
       '<rect x="0" y="0" width="' + MAP.w + '" height="' + MAP.h + '" fill="#3a2f26" opacity="' + ash + '"/>' +
@@ -558,6 +568,9 @@ G.ui = (function () {
       svg.style.setProperty('--sw', (3 * k) + 'px');
       var dots = svg.querySelectorAll('.map-dot');
       for (var i = 0; i < dots.length; i++) dots[i].setAttribute('r', 5 * k);
+      // Border thickness in map units, so it stays ~1.2px on screen at every zoom.
+      var er = document.getElementById('map-erode');
+      if (er) er.setAttribute('radius', (1.2 * k).toFixed(3));
       declutter(k);
     }
     apply();
