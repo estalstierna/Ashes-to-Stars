@@ -1,9 +1,9 @@
 // Offline cache. Bump VERSION when files change so phones pick up updates.
-var VERSION = 'ats-v3';
+var VERSION = 'ats-v4';
 var FILES = [
   './', './index.html', './css/style.css', './manifest.webmanifest',
-  './js/util.js', './js/names.js', './js/data.js', './js/engine.js', './js/military.js', './js/actions.js', './js/events.js', './js/ui.js',
-  './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'
+  './js/util.js', './js/names.js', './js/data.js', './js/engine.js', './js/military.js', './js/mapdata.js', './js/actions.js', './js/events.js', './js/ui.js',
+  './img/earth.jpg', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'
 ];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(VERSION).then(function (c) { return c.addAll(FILES); }).then(function () { return self.skipWaiting(); }));

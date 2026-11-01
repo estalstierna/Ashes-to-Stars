@@ -24,6 +24,12 @@ A text-based grand strategy RPG for mobile browsers.
 - **Characters age and die.** When yours dies, loses an election or is overthrown, you continue as an heir or protégé.
 - **Turn length grows with time:** 1 year per turn until 2150, then 5 years, then 10, then 25.
 - **Procedural content:** about 35 events with randomised nations, people, companies and places. AI nations act on their own and AI leaders rise and fall.
+- **Interactive world map** in the World tab:
+  - Real terrain (NASA Blue Marble) with the borders of the 2077 nations.
+  - Drag to pan, pinch to zoom, and tap a nation to open its details.
+  - Three modes: Nations, Terrain and Diplomacy (coloured by your relations).
+  - Conquered land takes on the conqueror's colour.
+  - A brown haze shows war damage to the Earth and clears as the planet heals.
 - Works offline, autosaves, and can be installed to the home screen as an app (PWA).
 
 ## Play
@@ -43,6 +49,8 @@ To install it on a phone, open the URL and choose **Share → Add to Home Screen
 | `js/events.js` | Procedural events |
 | `js/ui.js` | Screens and interface |
 | `js/names.js` | Procedural name generator, organised by culture |
+| `js/mapdata.js` | Generated map borders (from `tools/build-map.js`) |
+| `img/earth.jpg` | Earth texture |
 
 ## Tests
 
@@ -50,3 +58,17 @@ To install it on a phone, open the URL and choose **Share → Add to Home Screen
 node tests/sim.js 10 3000     # plays 10 full random games to year 3000; checks for crashes/NaN and prints balance data
 node tests/ui-smoke.js /tmp/shots   # mobile browser smoke test with screenshots (needs Playwright)
 ```
+
+## Rebuilding the map
+
+`js/mapdata.js` is generated: it assigns real countries to the fictional 2077 nations and merges their borders.
+
+```
+npm i world-atlas@2.0.2 topojson-client@3.1.0 polygon-clipping@0.15.7   # in any folder
+NODE_PATH=<that folder>/node_modules node tools/build-map.js
+```
+
+## Credits
+
+- Country borders: [Natural Earth](https://www.naturalearthdata.com/) via `world-atlas` (public domain).
+- Earth texture: NASA Blue Marble (public domain), taken from the `three-globe` package.

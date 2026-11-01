@@ -164,6 +164,7 @@ G.ui = (function () {
         return '<button class="' + (tab === t[0] ? 'on' : '') + '" data-act="tab" data-arg="' + t[0] + '"><span class="i">' + t[1] + '</span>' + t[2] +
           (t[0] === 'act' && s.ap > 0 ? '' : '') + '</button>';
       }).join('') + '</div></div></div>';
+    if (tab === 'world') initMap();
   }
   on('tab', function (t) { tab = t; render(); window.scrollTo(0, 0); });
 
@@ -479,10 +480,170 @@ G.ui = (function () {
     M.cancelProject(E.pn(), id); E.save(); keepScroll(render);
   });
 
+  // ---------- world map ----------
+  var MAP = G.mapdata;
+  var mapView = null, mapMode = 'political';
+
+  // Follow annexations to find who controls a nation's original territory today.
+  function ownerOf(id) {
+    var n = E.nation(id), guard = 0;
+    while (n && !n.alive && n.annexedBy && guard++ < 30) n = E.nation(n.annexedBy);
+    return n && n.alive ? n : null;
+  }
+  function diploColor(n) {
+    var me = E.pn();
+    if (n === me) return '#4fc3f7';
+    if (E.warBetween(me, n)) return '#ff3b30';
+    var r = E.relation(me, n);
+    return r > 30 ? '#4caf7d' : r > 0 ? '#a5c882' : r > -30 ? '#e3b341' : '#e5534b';
+  }
+
+  function mapHTML() {
+    var me = E.pn(), s = S();
+    var ash = ((100 - s.earth) / 100 * 0.55).toFixed(2);
+    var op = mapMode === 'terrain' ? 0.1 : mapMode === 'diplomacy' ? 0.5 : 0.42;
+    var regions = '', labels = '';
+    Object.keys(MAP.regions).forEach(function (id) {
+      var o = ownerOf(id);
+      if (!o) return;
+      var fill = mapMode === 'diplomacy' ? diploColor(o) : o.color;
+      var war = o !== me && E.warBetween(me, o);
+      var stroke = o === me ? '#ffffff' : war ? '#ff3b30' : fill;
+      regions += '<path data-nation="' + o.id + '" d="' + MAP.regions[id] + '" fill="' + fill + '" fill-opacity="' + op + '" stroke="' + stroke + '" stroke-width="' + (o === me ? 2 : 1) + '"' +
+        (war ? ' stroke-dasharray="4 3"' : '') + ' stroke-opacity="0.9" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>';
+    });
+    // Label priority: you first, then by GDP (used to hide overlapping labels).
+    E.alive().slice().sort(function (a, b) { return (b === me) - (a === me) || b.gdp - a.gdp; }).forEach(function (n, pri) {
+      var p = MAP.labels[n.id];
+      if (!p) return;
+      var atWar = E.atWar(n);
+      if (n.id === 'SGP') regions += '<circle data-nation="SGP" class="map-dot" cx="' + p[0] + '" cy="' + p[1] + '" r="3" fill="' + (mapMode === 'diplomacy' ? diploColor(n) : n.color) + '" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"/>';
+      labels += '<text class="map-label' + (n === me ? ' me' : '') + '" data-nation="' + n.id + '" data-pri="' + pri + '" x="' + p[0] + '" y="' + p[1] + '" dy="' + (n.id === 'SGP' ? '-1em' : 0) + '">' + (atWar ? '⚔️ ' : '') + esc(n.short) + '</text>';
+    });
+    return '<div class="map-wrap" id="map-wrap">' +
+      '<svg id="world-map" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">' +
+      '<rect x="-2000" y="-2000" width="5000" height="4500" fill="#06101f"/>' +
+      '<image href="img/earth.jpg" x="0" y="0" width="' + MAP.w + '" height="' + MAP.h + '" preserveAspectRatio="none"/>' +
+      '<rect x="0" y="0" width="' + MAP.w + '" height="' + MAP.h + '" fill="#3a2f26" opacity="' + ash + '"/>' +
+      '<path d="' + MAP.unclaimed + '" fill="#000" fill-opacity="0.15" stroke="#9aa4b2" stroke-opacity="0.35" stroke-width="0.6" vector-effect="non-scaling-stroke"/>' +
+      '<g id="map-regions">' + regions + '</g><g id="map-labels">' + labels + '</g></svg>' +
+      '<div class="map-zoom"><button data-act="mapzoom" data-arg="in">+</button><button data-act="mapzoom" data-arg="out">−</button><button data-act="mapzoom" data-arg="home">⌂</button></div>' +
+      '</div>' +
+      '<div class="seg map-modes">' + [['political', 'Nations'], ['terrain', 'Terrain'], ['diplomacy', 'Diplomacy']].map(function (m) {
+        return '<button class="' + (mapMode === m[0] ? 'sel' : '') + '" data-act="mapmode" data-arg="' + m[0] + '">' + m[1] + '</button>';
+      }).join('') + '</div>' +
+      (mapMode === 'diplomacy' ? '<div class="small muted map-legend"><span style="color:#4fc3f7">■</span> You <span style="color:#4caf7d">■</span> Friendly <span style="color:#a5c882">■</span> Warm <span style="color:#e3b341">■</span> Cool <span style="color:#e5534b">■</span> Hostile <span style="color:#ff3b30">■</span> At war</div>' :
+        '<div class="small muted map-legend">Drag to move, pinch or use +/− to zoom. Tap a nation for details.' + (s.earth < 60 ? ' The brown haze is war damage; heal the Earth to clear it.' : '') + '</div>');
+  }
+
+  function initMap() {
+    var svg = $('world-map'), wrap = $('map-wrap');
+    if (!svg) return;
+    var cw = wrap.clientWidth, ch = wrap.clientHeight;
+    var aspect = ch / cw;
+    if (!mapView) {
+      // Start zoomed in around the player's nation.
+      var c = MAP.labels[E.pn().id] || [500, 250];
+      mapView = { cx: c[0], cy: c[1], w: 420 };
+    }
+    function apply() {
+      var w = U.clamp(mapView.w, 40, MAP.w * 1.05), h = w * aspect;
+      mapView.w = w;
+      mapView.cx = U.clamp(mapView.cx, w / 2 - 20, MAP.w - w / 2 + 20);
+      mapView.cy = h >= 420 ? 240 : U.clamp(mapView.cy, 15 + h / 2, 470 - h / 2);
+      svg.setAttribute('viewBox', (mapView.cx - w / 2) + ' ' + (mapView.cy - h / 2) + ' ' + w + ' ' + h);
+      // Keep label text the same size on screen at every zoom level.
+      var k = w / cw, px = w > 450 ? 12 - Math.min(1, (w - 450) / 550) * 2.5 : 12;
+      svg.style.setProperty('--fs', (px * k) + 'px');
+      svg.style.setProperty('--sw', (3 * k) + 'px');
+      var dots = svg.querySelectorAll('.map-dot');
+      for (var i = 0; i < dots.length; i++) dots[i].setAttribute('r', 5 * k);
+      declutter(k);
+    }
+    apply();
+    mapApply = apply;
+
+    var pts = {}, start = null, moved = 0;
+    function toUnits(dx) { return dx * mapView.w / wrap.clientWidth; }
+    svg.addEventListener('pointerdown', function (e) {
+      svg.setPointerCapture(e.pointerId);
+      pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+      if (Object.keys(pts).length === 1) { start = { x: e.clientX, y: e.clientY, t: Date.now(), target: e.target }; moved = 0; }
+      else moved = 99; // multi-touch is never a tap
+    });
+    svg.addEventListener('pointermove', function (e) {
+      var p = pts[e.pointerId];
+      if (!p) return;
+      var ids = Object.keys(pts);
+      if (ids.length === 1) {
+        var dx = e.clientX - p.x, dy = e.clientY - p.y;
+        moved += Math.abs(dx) + Math.abs(dy);
+        mapView.cx -= toUnits(dx); mapView.cy -= toUnits(dy);
+      } else if (ids.length === 2) {
+        var other = pts[ids[0] === String(e.pointerId) ? ids[1] : ids[0]];
+        var before = Math.hypot(p.x - other.x, p.y - other.y);
+        var after = Math.hypot(e.clientX - other.x, e.clientY - other.y);
+        if (before > 0 && after > 0) zoomAt(before / after, (e.clientX + other.x) / 2, (e.clientY + other.y) / 2);
+      }
+      p.x = e.clientX; p.y = e.clientY;
+      apply();
+    });
+    function end(e) {
+      var wasTap = start && Object.keys(pts).length === 1 && moved < 8 && Date.now() - start.t < 600;
+      delete pts[e.pointerId];
+      if (wasTap && e.type === 'pointerup') {
+        var el = document.elementFromPoint(e.clientX, e.clientY);
+        var hit = el && el.closest && el.closest('[data-nation]');
+        if (hit) handlers.nation(hit.getAttribute('data-nation'));
+      }
+      if (!Object.keys(pts).length) start = null;
+    }
+    svg.addEventListener('pointerup', end);
+    svg.addEventListener('pointercancel', end);
+    svg.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      zoomAt(e.deltaY > 0 ? 1.15 : 1 / 1.15, e.clientX, e.clientY);
+      apply();
+    }, { passive: false });
+    function zoomAt(f, clientX, clientY) {
+      var r = wrap.getBoundingClientRect();
+      var fx = (clientX - r.left) / r.width - 0.5, fy = (clientY - r.top) / r.height - 0.5;
+      var w0 = mapView.w, w1 = U.clamp(w0 * f, 40, MAP.w * 1.05);
+      var h0 = w0 * aspect, h1 = w1 * aspect;
+      mapView.cx += fx * (w0 - w1); mapView.cy += fy * (h0 - h1);
+      mapView.w = w1;
+    }
+  }
+  var mapApply = null;
+  // Hide labels that would overlap a more important one.
+  function declutter(k) {
+    var labels = Array.prototype.slice.call(document.querySelectorAll('#world-map .map-label'));
+    labels.sort(function (a, b) { return a.getAttribute('data-pri') - b.getAttribute('data-pri'); });
+    var shown = [], pad = 2 * k;
+    labels.forEach(function (t) {
+      t.style.display = '';
+      var b;
+      try { b = t.getBBox(); } catch (e) { return; }
+      var hit = shown.some(function (o) {
+        return b.x < o.x + o.width + pad && o.x < b.x + b.width + pad && b.y < o.y + o.height && o.y < b.y + b.height;
+      });
+      if (hit) t.style.display = 'none'; else shown.push(b);
+    });
+  }
+  on('mapzoom', function (a) {
+    if (!mapView) return;
+    if (a === 'in') mapView.w /= 1.5;
+    else if (a === 'out') mapView.w *= 1.5;
+    else { var c = MAP.labels[E.pn().id] || [500, 250]; mapView = { cx: c[0], cy: c[1], w: 420 }; }
+    if (mapApply) mapApply();
+  });
+  on('mapmode', function (m) { mapMode = m; keepScroll(render); });
+
   function worldTab() {
     var me = E.pn();
     var list = E.alive().slice().sort(function (a, b) { return b.gdp - a.gdp; });
-    var h = '<h3>Nations of the world</h3><p class="small muted">Sorted by GDP. Tap a nation for details.</p>';
+    var h = '<h3>World map</h3>' + mapHTML() +
+      '<h3 style="margin-top:18px">Nations of the world</h3><p class="small muted">Sorted by GDP. Tap a nation for details.</p>';
     list.forEach(function (n) {
       var w = me !== n && E.warBetween(me, n), rel = me !== n ? Math.round(E.relation(me, n)) : null;
       h += '<button class="nation-row ' + (n === me ? 'me' : '') + '" data-act="nation" data-arg="' + n.id + '">' +
