@@ -24,11 +24,12 @@ A text-based grand strategy RPG for mobile browsers.
   - A breakdown of exactly why the economy grows or shrinks.
   - Charts of GDP and treasury/debt over time (tap to see values).
   - The national budget, trade agreements and a ranking of world economies.
-- **Alliances:**
-  - When an ally is attacked, its allies join the war. Allies of the attacker sometimes join too.
-  - If your ally is attacked you get a call to arms: honour it, or refuse and break the alliance.
-  - When the original war ends, the allies' wars end with it.
-  - AI nations form and break alliances over time, especially against a common enemy.
+- **Treaties and alliances** (World → Diplomacy):
+  - Three treaty types: non-aggression pact (15 years), defensive pact (defend each other only when attacked) and full alliance (defend each other, and may join each other's wars of aggression).
+  - When a war starts, every treaty partner weighs whether to join. This depends on the treaty type, which side its partner is on (defending is far more likely than attacking), relations with both sides, whether together they can win, other wars it is fighting, any pact with the enemy, and distance.
+  - Betraying an attacked partner breaks the treaty. Declining to join an attack only cools relations.
+  - The player gets a call to arms when a partner is attacked, and a request to join when a full ally attacks someone.
+  - The Diplomacy view lists your treaties, the chance each partner would defend you against your worst rival, and all alliances in the world.
 - **Economy:** set taxes and spending per sector (military, economy, welfare, science, space) and see your surplus or deficit live. Deficits become national debt, with interest that rises as debt grows. Also trade agreements and Earth restoration.
 - **Space race:** 12 milestones, from Lunar Outpost to Mars, the asteroid belt, Titan, a Dyson swarm, exoplanet colonies and Kardashev II.
 - **Characters age and die.** When yours dies, loses an election or is overthrown, you continue as an heir or protégé.

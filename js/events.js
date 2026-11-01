@@ -288,9 +288,9 @@ G.events = (function () {
     // ---------- Queued (not random) ----------
     { id: 'call-to-arms', w: 0, cond: function () { return false; },
       title: '{otherName} calls you to arms',
-      text: '{enemyName} has gone to war with your ally {otherName}. Your treaty says you must fight at their side.',
+      text: '{enemyName} has attacked {otherName}. Your treaty obliges you to defend them. Refusing will break the treaty.',
       choices: [
-        { t: 'Honour the alliance: declare war on {enemyName}', r: function (c) {
+        { t: 'Honour the treaty: declare war on {enemyName}', r: function (c) {
           var enemy = E.nation(c.eid), me = N();
           if (!enemy || !enemy.alive || !c.o || !c.o.alive) return 'The war is already over.';
           if (E.warBetween(me, enemy)) return 'You are already at war with ' + enemy.name + '.';
@@ -300,11 +300,30 @@ G.events = (function () {
           E.changeRel(me, c.o, 15);
           return 'Your forces mobilise alongside ' + c.o.name + '.';
         } },
-        { t: 'Stay out of it (breaks the alliance)', r: function (c) {
+        { t: 'Stay out of it (breaks the treaty)', r: function (c) {
           if (c.o) { E.breakAlliance(N(), c.o); E.changeRel(N(), c.o, -40); }
           pop(-5);
-          E.log('🐍 ' + N().name + ' refuses to help ' + (c.o ? c.o.name : 'its ally') + '. The alliance is broken.', 'player');
+          E.log('🐍 ' + N().name + ' refuses to defend ' + (c.o ? c.o.name : 'its ally') + '. Their pact is broken.', 'player');
           return 'You keep out of the war. Your former ally will not forget this.';
+        } }
+      ] },
+    { id: 'call-to-offense', w: 0, cond: function () { return false; },
+      title: '{otherName} asks you to join its war',
+      text: 'Your ally {otherName} has declared war on {enemyName} and asks you to join the attack. Your alliance does not oblige you, but they will remember your answer.',
+      choices: [
+        { t: 'Join the war against {enemyName}', r: function (c) {
+          var enemy = E.nation(c.eid), me = N();
+          if (!enemy || !enemy.alive || !c.o || !c.o.alive) return 'The war is already over.';
+          if (E.warBetween(me, enemy)) return 'You are already at war with ' + enemy.name + '.';
+          var parentAlive = G.state.wars.some(function (w) { return w.id === c.war; });
+          E.declareWar(me, enemy, { parent: parentAlive ? c.war : null, quiet: true });
+          E.log('⚔️ ' + me.name + ' joins its ally ' + c.o.name + ' and declares war on ' + enemy.name + '!', 'player');
+          E.changeRel(me, c.o, 10);
+          return 'Your forces march alongside ' + c.o.name + '.';
+        } },
+        { t: 'Decline politely', r: function (c) {
+          if (c.o) E.changeRel(N(), c.o, -10);
+          return c.o ? c.o.name + ' is disappointed, but the alliance holds.' : 'You stay out of it.';
         } }
       ] }
   ];

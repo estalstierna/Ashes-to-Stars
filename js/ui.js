@@ -166,7 +166,7 @@ G.ui = (function () {
         return '<button class="' + (tab === t[0] ? 'on' : '') + '" data-act="tab" data-arg="' + t[0] + '"><span class="i">' + t[1] + '</span>' + t[2] +
           (t[0] === 'act' && s.ap > 0 ? '' : '') + '</button>';
       }).join('') + '</div></div></div>';
-    if (tab === 'world') initMap();
+    if (tab === 'world' && worldView === 'map') initMap();
     if (tab === 'econ') initCharts();
   }
   on('tab', function (t) { tab = t; render(); window.scrollTo(0, 0); });
@@ -583,8 +583,8 @@ G.ui = (function () {
     var al = E.allies(n);
     h += '<div class="card"><h3>Alliances</h3>' +
       (al.length ? al.map(function (x) {
-        return '<div class="row small" style="padding:4px 0"><span>🤝 <span class="dot" style="background:' + x.color + '"></span>' + esc(x.name) + '</span><span>power ' + U.num(E.power(x)) + '</span></div>';
-      }).join('') + '<div class="small muted" style="margin-top:6px">If you are attacked, your allies join the war. If an ally is attacked, you will be called to arms. Combined strength: ' + U.num(E.blocPower(n)) + '.</div>' :
+        return '<div class="row small" style="padding:4px 0"><span>' + PACT_NAMES[E.allianceType(n, x)] + ' · <span class="dot" style="background:' + x.color + '"></span>' + esc(x.short) + '</span><span>power ' + U.num(E.power(x)) + '</span></div>';
+      }).join('') + '<div class="small muted" style="margin-top:6px">Partners decide case by case whether to fight: see World → Diplomacy for their odds. Combined defensive strength: ' + U.num(E.blocPower(n)) + '.</div>' :
         '<div class="small muted">No allies. ' + (lead ? 'Propose an alliance from the Actions tab or by tapping a nation on the World map.' : '') + '</div>') + '</div>';
 
     // Wars
@@ -652,7 +652,9 @@ G.ui = (function () {
     var me = E.pn();
     if (n === me) return '#4fc3f7';
     if (E.warBetween(me, n)) return '#ff3b30';
-    if (E.allied(me, n)) return '#2dd4bf';
+    var at = E.allianceType(me, n);
+    if (at === 'alliance') return '#2dd4bf';
+    if (at === 'defensive') return '#7cc6ff';
     var r = E.relation(me, n);
     return r > 30 ? '#4caf7d' : r > 0 ? '#a5c882' : r > -30 ? '#e3b341' : '#e5534b';
   }
@@ -701,7 +703,7 @@ G.ui = (function () {
       '<div class="seg map-modes">' + [['political', 'Nations'], ['terrain', 'Terrain'], ['diplomacy', 'Diplomacy']].map(function (m) {
         return '<button class="' + (mapMode === m[0] ? 'sel' : '') + '" data-act="mapmode" data-arg="' + m[0] + '">' + m[1] + '</button>';
       }).join('') + '</div>' +
-      (mapMode === 'diplomacy' ? '<div class="small muted map-legend"><span style="color:#4fc3f7">■</span> You <span style="color:#2dd4bf">■</span> Ally <span style="color:#4caf7d">■</span> Friendly <span style="color:#a5c882">■</span> Warm <span style="color:#e3b341">■</span> Cool <span style="color:#e5534b">■</span> Hostile <span style="color:#ff3b30">■</span> At war</div>' :
+      (mapMode === 'diplomacy' ? '<div class="small muted map-legend"><span style="color:#4fc3f7">■</span> You <span style="color:#2dd4bf">■</span> Ally <span style="color:#7cc6ff">■</span> Defensive pact <span style="color:#4caf7d">■</span> Friendly <span style="color:#a5c882">■</span> Warm <span style="color:#e3b341">■</span> Cool <span style="color:#e5534b">■</span> Hostile <span style="color:#ff3b30">■</span> At war</div>' :
         '<div class="small muted map-legend">Drag to move, pinch or use +/− to zoom. Tap a nation for details.' + (s.earth < 60 ? ' The brown haze is war damage; heal the Earth to clear it.' : '') + '</div>');
   }
 
@@ -811,16 +813,64 @@ G.ui = (function () {
   });
   on('mapmode', function (m) { mapMode = m; keepScroll(render); });
 
+  var worldView = 'map';
+  var PACT_NAMES = { trade: '📦 Trade', nap: '🕊️ Non-aggression', defensive: '🛡️ Defensive pact', alliance: '🤝 Alliance' };
+  on('worldview', function (v) { worldView = v; keepScroll(render); });
+
+  function diplomacyView() {
+    var me = E.pn(), s = S(), lead = E.isLeader(), h = '';
+    var others = E.alive().filter(function (x) { return x !== me; });
+    // Your treaties
+    var mine = others.map(function (x) {
+      var ps = s.pacts.filter(function (p) { return (p.a === me.id && p.b === x.id) || (p.b === me.id && p.a === x.id); });
+      return { n: x, ps: ps };
+    }).filter(function (r) { return r.ps.length; }).sort(function (a, b) { return E.relation(me, b.n) - E.relation(me, a.n); });
+    h += '<div class="card"><h3>Your treaties</h3>' + (mine.length ? mine.map(function (r) {
+      return '<button class="nation-row" data-act="nation" data-arg="' + r.n.id + '" style="margin-bottom:6px"><div class="row"><b><span class="dot" style="background:' + r.n.color + '"></span>' + esc(r.n.short) + '</b><span class="tag">' + (E.relation(me, r.n) > 0 ? '+' : '') + Math.round(E.relation(me, r.n)) + '</span></div>' +
+        '<div class="meta">' + r.ps.map(function (p) { return PACT_NAMES[p.type] + (p.until < 99999 ? ' (until ' + p.until + ')' : ''); }).join(' · ') + '</div></button>';
+    }).join('') : '<div class="small muted">No treaties yet.' + (lead ? ' Tap a nation (here or on the map) to propose one.' : '') + '</div>') + '</div>';
+
+    // Who would defend you?
+    var allies = E.allies(me);
+    var threat = others.filter(function (x) { return !E.allied(me, x); }).sort(function (a, b) { return E.relation(me, a) - E.relation(me, b) || E.power(b) - E.power(a); })[0];
+    if (allies.length && threat) {
+      h += '<div class="card"><h3>If ' + esc(threat.short) + ' attacked you today</h3><div class="small muted" style="margin-bottom:8px">Your most hostile rival (relations ' + Math.round(E.relation(me, threat)) + ', power ' + U.num(E.power(threat)) + '). Chance that each partner would fight at your side:</div>' +
+        allies.map(function (a) {
+          var c = E.joinChance(a, me, threat, true);
+          return '<div class="row small"><span>' + PACT_NAMES[E.allianceType(me, a)] + ' · ' + esc(a.short) + '</span><b>' + Math.round(c * 100) + '%</b></div>' + bar(c * 100);
+        }).join('') + '<div class="small muted">Higher with better relations, if they dislike the attacker, and if together you can win. Lower if they are busy in other wars or have a pact with the attacker.</div></div>';
+    }
+
+    // Treaty types
+    h += '<div class="card"><h3>Treaty types</h3>' +
+      '<div class="small" style="margin-bottom:8px"><b>🕊️ Non-aggression pact</b>: neither side attacks the other (lasts 15 years). Also signed automatically after a peace treaty.</div>' +
+      '<div class="small" style="margin-bottom:8px"><b>🛡️ Defensive pact</b>: if one of you is attacked, the other is expected to help. Never covers wars you start. Refusing to help breaks the pact.</div>' +
+      '<div class="small" style="margin-bottom:8px"><b>🤝 Alliance</b>: defend each other (more reliably) <i>and</i> your ally may join wars you start, or ask you to join theirs. Declining an attack only cools relations.</div>' +
+      '<div class="small"><b>📦 Trade agreement</b>: +0.6% growth for both sides for 10 years.</div></div>';
+
+    // World alliances
+    var blocs = s.pacts.filter(function (p) { return (p.type === 'alliance' || p.type === 'defensive') && E.nation(p.a).alive && E.nation(p.b).alive; });
+    h += '<div class="card"><h3>Alliances of the world</h3>' + (blocs.length ? blocs.sort(function (a, b) { return a.type < b.type ? -1 : 1; }).map(function (p) {
+      var A = E.nation(p.a), B = E.nation(p.b);
+      return '<div class="row small" style="padding:4px 0"><span><span class="dot" style="background:' + A.color + '"></span>' + esc(A.short) + ' ⇄ <span class="dot" style="background:' + B.color + '"></span>' + esc(B.short) + '</span><span class="muted">' + PACT_NAMES[p.type] + '</span></div>';
+    }).join('') : '<div class="small muted">No alliances right now.</div>') + '</div>';
+    return h;
+  }
+
   function worldTab() {
     var me = E.pn();
+    var seg = '<div class="seg" style="margin-bottom:12px">' + [['map', '🗺️ Map & nations'], ['diplo', '🤝 Diplomacy']].map(function (x) {
+      return '<button class="' + (worldView === x[0] ? 'sel' : '') + '" data-act="worldview" data-arg="' + x[0] + '">' + x[1] + '</button>';
+    }).join('') + '</div>';
+    if (worldView === 'diplo') return seg + diplomacyView();
     var list = E.alive().slice().sort(function (a, b) { return b.gdp - a.gdp; });
-    var h = '<h3>World map</h3>' + mapHTML() +
+    var h = seg + '<h3>World map</h3>' + mapHTML() +
       '<h3 style="margin-top:18px">Nations of the world</h3><p class="small muted">Sorted by GDP. Tap a nation for details.</p>';
     list.forEach(function (n) {
       var w = me !== n && E.warBetween(me, n), rel = me !== n ? Math.round(E.relation(me, n)) : null;
       h += '<button class="nation-row ' + (n === me ? 'me' : '') + '" data-act="nation" data-arg="' + n.id + '">' +
         '<div class="row"><div><span class="dot" style="background:' + n.color + '"></span><b>' + esc(n.name) + '</b></div>' +
-        '<div>' + (w ? '<span class="tag war">' + (w.independence ? 'UPRISING' : 'WAR') + '</span>' : '') + (n.born && S().year - n.born < 15 ? '<span class="tag">NEW STATE</span>' : '') + (me !== n && E.allied(me, n) ? '<span class="tag pact">ALLY</span>' : '') + (rel !== null ? '<span class="tag ' + (rel > 20 ? 'pact' : rel < -30 ? 'war' : '') + '">' + (rel > 0 ? '+' : '') + rel + '</span>' : '<span class="tag">YOU</span>') + '</div></div>' +
+        '<div>' + (w ? '<span class="tag war">' + (w.independence ? 'UPRISING' : 'WAR') + '</span>' : '') + (n.born && S().year - n.born < 15 ? '<span class="tag">NEW STATE</span>' : '') + (me !== n && E.allied(me, n) ? '<span class="tag pact">' + (E.allianceType(me, n) === 'alliance' ? 'ALLY' : 'DEF. PACT') + '</span>' : '') + (rel !== null ? '<span class="tag ' + (rel > 20 ? 'pact' : rel < -30 ? 'war' : '') + '">' + (rel > 0 ? '+' : '') + rel + '</span>' : '<span class="tag">YOU</span>') + '</div></div>' +
         '<div class="meta">' + E.gov(n).name + ' · Pop ' + U.people(n.pop) + ' · GDP ' + U.money(n.gdp) + ' · Mil ' + U.num(E.power(n)) + ' · 🚀 ' + D.milestones[E.milestoneIndex(n)].name + '</div></button>';
     });
     var dead = Object.keys(S().nations).map(E.nation).filter(function (n) { return !n.alive; });
@@ -830,7 +880,7 @@ G.ui = (function () {
   on('nation', function (id) {
     var n = E.nation(id), me = E.pn(), self = n === me;
     var wars = E.warsOf(n).map(function (w) { return E.nation(w.a === n.id ? w.b : w.a).short; });
-    var pacts = S().pacts.filter(function (p) { return p.a === n.id || p.b === n.id; }).map(function (p) { return ({ trade: 'Trade', nap: 'Non-aggression', alliance: '🛡️ Alliance' }[p.type] || p.type) + ' with ' + E.nation(p.a === n.id ? p.b : p.a).short; });
+    var pacts = S().pacts.filter(function (p) { return p.a === n.id || p.b === n.id; }).map(function (p) { return (PACT_NAMES[p.type] || p.type) + ' with ' + E.nation(p.a === n.id ? p.b : p.a).short; });
     var html = '<div class="kicker">' + esc(n.tier) + '</div><h2><span class="dot" style="background:' + n.color + '"></span>' + esc(n.name) + '</h2>' +
       '<p class="muted small">' + esc(n.desc) + '</p>' +
       '<div class="grid2">' + stat('Government', E.gov(n).name) + stat('Leader', n.leader ? esc(n.leader.name) : esc(S().player.name)) +
@@ -841,7 +891,8 @@ G.ui = (function () {
       (pacts.length ? '<p class="small">🤝 ' + pacts.join(' · ') + '</p>' : '') +
       (!self ? '<p class="small">Relations with you: <b>' + Math.round(E.relation(me, n)) + '</b> · Neighbour: ' + (me.neighbors.indexOf(n.id) >= 0 ? 'yes' : 'no') + '</p>' : '');
     if (!self && E.isLeader()) {
-      var dip = [['envoy', 'Send envoys'], ['trade', 'Trade agreement'], ['alliance', 'Propose alliance'], ['breakally', 'Leave alliance'], ['nap', 'Non-aggression pact'], ['tribute', 'Demand tribute'], ['war', 'Declare war'], ['offensive', 'Major offensive'], ['peace', 'Propose peace']];
+      var dip = [['envoy', 'Send envoys'], ['trade', 'Trade agreement'], ['nap', 'Non-aggression pact'], ['defpact', 'Propose defensive pact'],
+        ['alliance', E.allianceType(me, n) === 'defensive' ? 'Upgrade to full alliance' : 'Propose full alliance'], ['breakally', 'Cancel alliance / pact'], ['tribute', 'Demand tribute'], ['war', 'Declare war'], ['offensive', 'Major offensive'], ['peace', 'Propose peace']];
       var avail = A.available();
       dip.forEach(function (d) {
         var a = avail.filter(function (x) { return x.id === d[0]; })[0];

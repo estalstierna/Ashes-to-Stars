@@ -56,7 +56,8 @@ for (let g = 0; g < games; g++) {
         const mil = E.alive().slice().sort((a, b) => E.power(b) - E.power(a)).slice(0, 3).map(n => `${n.id}:${G.util.num(E.power(n))}/${G.util.num(n.mil.men * 1000)}men/${n.mil.done.length}proj/debt${Math.round(E.debtRatio(n) * 100)}%`);
         const changed = G.state.prov.filter((o, i) => o !== G.mapdata.provinces[i].n).length;
         const st = G.state.stats || {}, upr = st.uprisings || 0, won = st.independence || 0, crushed = st.crushed || 0, integ = st.integrated || 0;
-        const alliances = G.state.pacts.filter(p => p.type === 'alliance').length, joined = G.state.log.filter(l => l.text.includes('honours its alliance')).length;
+        const alliances = G.state.pacts.filter(p => p.type === 'alliance').length + '+' + G.state.pacts.filter(p => p.type === 'defensive').length + 'def';
+        const joined = `def${st.allyDefend || 0}/betray${st.allyBetray || 0}/atk${st.allyAttack || 0}/decl${st.allyDecline || 0}`;
         checkpoints[y] = `${y}: uprisings=${upr} won=${won} crushed=${crushed} integrated=${integ} alliances=${alliances} allyJoins=${joined} provincesChanged=${changed} nations=${E.alive().length} wars=${G.state.wars.length} earth=${G.state.earth.toFixed(0)} pop=${G.util.people(E.worldPop())} top=${top.join(' ')}\n      mil=${mil.join(' ')}`;
       }
     }

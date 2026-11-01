@@ -179,8 +179,8 @@ G.engine = (function () {
     s.firsts[2] = { nation: 'USA', year: 2065 };
 
     // Alliances that survived the Long War.
-    [['USA', 'EF'], ['AUS', 'SGP'], ['SAC', 'MESO'], ['CHN', 'SIB']].forEach(function (x) {
-      s.pacts.push({ a: x[0], b: x[1], type: 'alliance', until: 999999 });
+    [['USA', 'EF', 'alliance'], ['AUS', 'SGP', 'alliance'], ['SAC', 'MESO', 'defensive'], ['CHN', 'SIB', 'defensive'], ['SWE', 'CAS', 'defensive']].forEach(function (x) {
+      s.pacts.push({ a: x[0], b: x[1], type: x[2], until: 999999 });
       s.nations[x[0]].rel[x[1]] = Math.max(s.nations[x[0]].rel[x[1]] || 0, 55); s.nations[x[1]].rel[x[0]] = Math.max(s.nations[x[1]].rel[x[0]] || 0, 55);
     });
     var n = s.nations[opts.nation];
@@ -310,75 +310,114 @@ G.engine = (function () {
     return { parts: parts, raw: raw, total: U.clamp(raw, -0.15, 0.12), pc: pc, ceiling: ceil };
   }
 
-  // ---------- alliances ----------
-  function allies(n) {
-    return S().pacts.filter(function (p) { return p.type === 'alliance' && (p.a === n.id || p.b === n.id); })
-      .map(function (p) { return nation(p.a === n.id ? p.b : p.a); })
-      .filter(function (x) { return x && x.alive; });
+  // ---------- treaties & alliances ----------
+  // Treaty kinds: 'nap' (no attacks, expires), 'defensive' (defend each other only when attacked),
+  // 'alliance' (defend each other and may join each other's wars of aggression).
+  var ALLY_KINDS = { defensive: true, alliance: true };
+  function pactBetween(a, b) {
+    return S().pacts.filter(function (p) { return ALLY_KINDS[p.type] && ((p.a === a.id && p.b === b.id) || (p.a === b.id && p.b === a.id)); })[0];
   }
-  function allied(a, b) { return hasPact(a, b, 'alliance'); }
-  function formAlliance(a, b) {
-    if (allied(a, b)) return;
-    S().pacts.push({ a: a.id, b: b.id, type: 'alliance', until: 999999 });
-    changeRel(a, b, 10);
+  function allianceType(a, b) { var p = pactBetween(a, b); return p ? p.type : null; }
+  // kind: 'any' (default), 'alliance' (full only) or 'defensive'.
+  function allies(n, kind) {
+    return S().pacts.filter(function (p) {
+      return (kind && kind !== 'any' ? p.type === kind : ALLY_KINDS[p.type]) && (p.a === n.id || p.b === n.id);
+    }).map(function (p) { return nation(p.a === n.id ? p.b : p.a); }).filter(function (x) { return x && x.alive; });
+  }
+  function allied(a, b) { return !!pactBetween(a, b); }
+  function formAlliance(a, b, type) {
+    type = type || 'alliance';
+    breakAlliance(a, b);
+    S().pacts.push({ a: a.id, b: b.id, type: type, until: 999999 });
+    changeRel(a, b, type === 'alliance' ? 10 : 6);
   }
   function breakAlliance(a, b) {
-    S().pacts = S().pacts.filter(function (p) { return !(p.type === 'alliance' && ((p.a === a.id && p.b === b.id) || (p.a === b.id && p.b === a.id))); });
+    S().pacts = S().pacts.filter(function (p) { return !(ALLY_KINDS[p.type] && ((p.a === a.id && p.b === b.id) || (p.a === b.id && p.b === a.id))); });
   }
-  // Strength of a nation together with its allies (deterrence).
-  function blocPower(n) { return allies(n).reduce(function (a, x) { return a + power(x, true); }, power(n, true)); }
+  // Deterrence: a defender counts all its allies; an attacker only its full allies.
+  function blocPower(n, attacking) {
+    return allies(n, attacking ? 'alliance' : 'any').reduce(function (a, x) { return a + power(x, true); }, power(n, true));
+  }
 
-  // AI nations form and leave alliances over time.
+  // How likely `ally` is to join a war at `partner`'s side against `enemy`.
+  // Depends on the treaty, which side the partner is on, relations and military odds.
+  function joinChance(ally, partner, enemy, partnerDefending) {
+    var type = allianceType(ally, partner);
+    if (!type) return 0;
+    if (!partnerDefending && type !== 'alliance') return 0; // defensive pacts never cover aggression
+    var p = partnerDefending ? (type === 'alliance' ? 0.75 : 0.65) : 0.1;
+    p += (relation(ally, partner) - 30) / 200;          // closeness to the partner
+    p -= relation(ally, enemy) / (partnerDefending ? 250 : 350); // liking the enemy holds you back, hating them pushes you in
+    var ours = power(ally, true) + power(partner, true), theirs = power(enemy, true) || 1;
+    p += U.clamp((ours / theirs - 1) * 0.12, -0.35, 0.15); // nobody likes a hopeless war
+    p -= warsOf(ally).length * 0.15;                     // already fighting elsewhere
+    if (hasPact(ally, enemy, 'nap')) p -= 0.25;          // would break a non-aggression pact
+    if (!canReach(ally, enemy)) p -= 0.1;               // far away
+    // Joining someone else's war of aggression is never a sure thing.
+    return U.clamp(p, 0.02, partnerDefending ? 0.97 : 0.6);
+  }
+
+  // AI nations sign, upgrade and drop treaties over time.
   function aiAlliances() {
-    var ns = alive(), pid = S().player.nation;
+    var ns = alive(), pid = S().player.nation, playerRules = isLeader();
+    function isPlayer(n) { return n.id === pid && playerRules; }
     ns.forEach(function (a) {
-      allies(a).forEach(function (b) { if (relation(a, b) < -10 && (a.id !== pid || !isLeader()) && (b.id !== pid || !isLeader())) {
-        breakAlliance(a, b);
-        log('💔 The alliance between ' + a.name + ' and ' + b.name + ' collapses.', a.id === pid || b.id === pid ? 'player' : 'world');
-      } });
-      // Allies grow closer over time.
-      allies(a).forEach(function (b) { if (a.id < b.id) changeRel(a, b, 1.5); });
-      if (allies(a).length >= 3 || !U.chance(0.03)) return;
+      allies(a).forEach(function (b) {
+        if (a.id < b.id) changeRel(a, b, 1.5); // allies grow closer over time
+        if (relation(a, b) < -10 && !isPlayer(a) && !isPlayer(b)) {
+          breakAlliance(a, b);
+          log('💔 The alliance between ' + a.name + ' and ' + b.name + ' collapses.', a.id === pid || b.id === pid ? 'player' : 'world');
+        } else if (allianceType(a, b) === 'defensive' && relation(a, b) > 65 && !isPlayer(a) && !isPlayer(b) && a.id < b.id && U.chance(0.05)) {
+          formAlliance(a, b, 'alliance');
+          log('🤝 ' + a.name + ' and ' + b.name + ' upgrade their defensive pact to a full alliance.', a.id === pid || b.id === pid ? 'player' : 'world');
+        }
+      });
+      if (isPlayer(a) || allies(a).length >= 4 || !U.chance(0.03)) return;
       // A common enemy brings nations together.
       function sharedEnemy(b) { return ns.some(function (e) { return e !== a && e !== b && relation(a, e) < -30 && relation(b, e) < -30; }); }
       var cands = ns.filter(function (b) {
-        return b !== a && !allied(a, b) && !warBetween(a, b) && allies(b).length < 3 &&
-          (relation(a, b) > 35 || (relation(a, b) > 5 && sharedEnemy(b))) &&
-          !(b.id === pid && isLeader()) && !(a.id === pid && isLeader());
+        return b !== a && !allied(a, b) && !warBetween(a, b) && allies(b).length < 4 && !isPlayer(b) &&
+          (relation(a, b) > 25 || (relation(a, b) > 5 && sharedEnemy(b)));
       });
       if (!cands.length) return;
-      var b = U.pick(cands);
-      formAlliance(a, b);
-      log('🤝 ' + a.name + ' and ' + b.name + ' form a military alliance.', a.id === pid || b.id === pid ? 'player' : 'world');
+      var b = U.pick(cands), full = relation(a, b) > 50;
+      formAlliance(a, b, full ? 'alliance' : 'defensive');
+      log('🤝 ' + a.name + ' and ' + b.name + (full ? ' form a military alliance.' : ' sign a defensive pact.'), a.id === pid || b.id === pid ? 'player' : 'world');
     });
   }
 
-  // When a war starts, allies are called in. Defenders' allies always answer (or betray);
-  // attackers' allies join some of the time. The player decides through a call-to-arms event.
+  // When a war starts, each treaty partner weighs whether to join (see joinChance).
+  // Betraying a partner that was attacked breaks the treaty; declining to join a war of
+  // aggression only cools relations. The player decides through call-to-arms events.
   function callAllies(w, attacker, defender) {
     var pid = S().player.nation;
-    function join(ally, enemy, side) {
-      if (warBetween(ally, enemy) || allied(ally, enemy) || ally === enemy) return;
-      if (ally.id === pid && isLeader()) {
-        G.events.queue({ id: 'call-to-arms', ctx: { oid: side.id, otherName: side.name, eid: enemy.id, enemyName: enemy.name, war: w.id } });
-        return;
-      }
+    function tag(n) { return n.id === pid ? 'player' : null; }
+    function enter(ally, enemy, side, how) {
       declareWar(ally, enemy, { parent: w.id, quiet: true });
-      log('🛡️ ' + ally.name + ' honours its alliance with ' + side.name + ' and declares war on ' + enemy.name + '!',
-        ally.id === pid || enemy.id === pid || side.id === pid ? 'player' : 'major');
+      log('🛡️ ' + ally.name + ' ' + how + ' ' + side.name + ' and declares war on ' + enemy.name + '!',
+        tag(ally) || tag(enemy) || tag(side) || 'major');
     }
     allies(defender).forEach(function (c) {
-      if (c === attacker) return;
-      if (c.id === pid && isLeader()) return join(c, attacker, defender);
-      if (U.chance(0.9)) join(c, attacker, defender);
+      if (c === attacker || warBetween(c, attacker) || allied(c, attacker)) return;
+      if (c.id === pid && isLeader()) {
+        G.events.queue({ id: 'call-to-arms', ctx: { oid: defender.id, otherName: defender.name, eid: attacker.id, enemyName: attacker.name, war: w.id, kind: allianceType(c, defender) } });
+        return;
+      }
+      if (U.chance(joinChance(c, defender, attacker, true))) { stat('allyDefend'); enter(c, attacker, defender, 'comes to the defence of'); }
       else {
+        stat('allyBetray');
         breakAlliance(c, defender); changeRel(c, defender, -40);
-        log('🐍 ' + c.name + ' abandons its ally ' + defender.name + '. The alliance is broken.', c.id === pid || defender.id === pid ? 'player' : 'world');
+        log('🐍 ' + c.name + ' refuses to defend ' + defender.name + '. Their pact is broken.', tag(c) || tag(defender) || 'world');
       }
     });
-    allies(attacker).forEach(function (c) {
-      if (c === defender || (c.id === pid && isLeader())) return;
-      if (U.chance(0.4)) join(c, defender, attacker);
+    allies(attacker, 'alliance').forEach(function (c) {
+      if (c === defender || warBetween(c, defender) || allied(c, defender)) return;
+      if (c.id === pid && isLeader()) {
+        G.events.queue({ id: 'call-to-offense', ctx: { oid: attacker.id, otherName: attacker.name, eid: defender.id, enemyName: defender.name, war: w.id } });
+        return;
+      }
+      if (U.chance(joinChance(c, attacker, defender, false))) { stat('allyAttack'); enter(c, defender, attacker, 'joins its ally'); }
+      else { stat('allyDecline'); changeRel(c, attacker, -5); }
     });
   }
 
@@ -667,7 +706,7 @@ G.engine = (function () {
       if (a.warYears > 0 || !U.chance(0.03 * a.aggression)) return;
       var targets = ns.filter(function (b) {
         return b !== a && canReach(a, b) && !warBetween(a, b) && !hasPact(a, b, 'nap') &&
-          relation(a, b) < -25 && !allied(a, b) && blocPower(a) > blocPower(b) * 1.4;
+          relation(a, b) < -25 && !allied(a, b) && blocPower(a, true) > blocPower(b) * 1.4;
       });
       if (!targets.length) return;
       var b = U.pick(targets);
@@ -943,7 +982,7 @@ G.engine = (function () {
     SECTORS: SECTORS, syncSpend: syncSpend, spending: spending, debt: debt, debtRatio: debtRatio, interestRate: interestRate,
     interest: interest, balance: balance, borrowLimit: borrowLimit, projectCost: projectCost,
     milestoneIndex: milestoneIndex, spaceRate: spaceRate, growthParts: growthParts, ceilingPc: ceilingPc, earthFactor: earthFactor,
-    allies: allies, allied: allied, occupiedBy: occupiedBy, occupation: occupation, resolveIndependence: resolveIndependence, formAlliance: formAlliance, breakAlliance: breakAlliance, blocPower: blocPower, relation: relation, changeRel: changeRel, wars: wars, warsOf: warsOf, atWar: atWar,
+    allies: allies, allied: allied, allianceType: allianceType, joinChance: joinChance, occupiedBy: occupiedBy, occupation: occupation, resolveIndependence: resolveIndependence, formAlliance: formAlliance, breakAlliance: breakAlliance, blocPower: blocPower, relation: relation, changeRel: changeRel, wars: wars, warsOf: warsOf, atWar: atWar,
     warBetween: warBetween, enemiesOf: enemiesOf, hasPact: hasPact, addPact: addPact, canReach: canReach, rank: rank,
     declareWar: declareWar, endWar: endWar, cede: cede, capitulate: capitulate, addMod: addMod, becomeLeader: becomeLeader,
     killPlayer: killPlayer, successorOptions: successorOptions, applySuccessor: applySuccessor,

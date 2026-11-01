@@ -178,24 +178,35 @@ G.actions = (function () {
         E.log('📜 ' + n.name + ' and ' + t.name + ' sign a non-aggression pact.', 'player');
         return 'Pact signed.';
       } },
-    { id: 'alliance', cat: 'Diplomacy', role: 'leader', name: 'Propose alliance', cost: 0.003, target: 'allycand',
-      desc: 'A military alliance: if either of you is attacked, the other joins the war. Needs good relations (40+ to be likely).',
+    { id: 'defpact', cat: 'Diplomacy', role: 'leader', name: 'Propose defensive pact', cost: 0.002, target: 'defcand',
+      desc: 'You defend each other only if one of you is attacked. Easier to get than a full alliance (relations 25+ to be likely).',
       run: function (id) {
         var n = N(), t = E.nation(id);
-        var p = U.clamp((E.relation(n, t) - 20) / 60, 0.05, 0.9);
-        if (E.allies(t).length >= 3) p *= 0.3;
-        if (!U.chance(p)) { E.changeRel(n, t, -3); return t.name + ' declines your alliance.'; }
-        E.formAlliance(n, t);
-        E.log('🤝 ' + n.name + ' and ' + t.name + ' form a military alliance.', 'player');
-        return 'Alliance signed with ' + t.name + '. An attack on one is an attack on both.';
+        var p = U.clamp((E.relation(n, t) - 5) / 50 + strengthAppeal(n, t), 0.04, 0.92);
+        if (E.allies(t).length >= 4) p *= 0.4;
+        if (!U.chance(p)) { E.changeRel(n, t, -2); return t.name + ' declines a defensive pact.'; }
+        E.formAlliance(n, t, 'defensive');
+        E.log('🛡️ ' + n.name + ' and ' + t.name + ' sign a defensive pact.', 'player');
+        return 'Defensive pact signed with ' + t.name + '. If either of you is attacked, the other is expected to help.';
       } },
-    { id: 'breakally', cat: 'Diplomacy', role: 'leader', name: 'Leave alliance', cost: 0, target: 'allied',
-      desc: 'End a military alliance. Your former ally will be bitter.',
+    { id: 'alliance', cat: 'Diplomacy', role: 'leader', name: 'Propose full alliance', cost: 0.003, target: 'allycand',
+      desc: 'Defend each other AND possibly join each other\'s wars of aggression. Can upgrade a defensive pact. Needs strong relations (45+ to be likely).',
+      run: function (id) {
+        var n = N(), t = E.nation(id);
+        var p = U.clamp((E.relation(n, t) - 25) / 50 + strengthAppeal(n, t) + (E.allianceType(n, t) === 'defensive' ? 0.1 : 0), 0.03, 0.9);
+        if (E.allies(t).length >= 4 && !E.allied(n, t)) p *= 0.3;
+        if (!U.chance(p)) { E.changeRel(n, t, -3); return t.name + ' declines a full alliance.'; }
+        E.formAlliance(n, t, 'alliance');
+        E.log('🤝 ' + n.name + ' and ' + t.name + ' form a military alliance.', 'player');
+        return 'Full alliance signed with ' + t.name + '.';
+      } },
+    { id: 'breakally', cat: 'Diplomacy', role: 'leader', name: 'Cancel alliance or pact', cost: 0, target: 'allied',
+      desc: 'End a defensive pact or alliance. Your former partner will be bitter.',
       run: function (id) {
         var n = N(), t = E.nation(id);
         E.breakAlliance(n, t); E.changeRel(n, t, -30);
-        E.log('💔 ' + n.name + ' leaves its alliance with ' + t.name + '.', 'player');
-        return 'The alliance with ' + t.name + ' is over.';
+        E.log('💔 ' + n.name + ' ends its treaty with ' + t.name + '.', 'player');
+        return 'The treaty with ' + t.name + ' is over.';
       } },
     { id: 'tribute', cat: 'Diplomacy', role: 'leader', name: 'Demand tribute', cost: 0, target: 'weaker',
       desc: 'Threaten a much weaker nation into paying you. They might refuse, and they will hate you.',
@@ -330,6 +341,9 @@ G.actions = (function () {
       } }
   ];
 
+  // A strong partner is attractive; a much weaker one is a liability.
+  function strengthAppeal(n, t) { return U.clamp((E.power(n) / Math.max(1, E.power(t)) - 1) * 0.05, -0.1, 0.15); }
+
   function costFor(a) {
     if (a.role === 'leader') return a.cost * N().gdp;
     return a.cost;
@@ -358,7 +372,8 @@ G.actions = (function () {
     var n = N(), all = E.alive().filter(function (x) { return x !== n; });
     switch (a.target) {
       case 'reachable': return all.filter(function (x) { return E.canReach(n, x) && !E.warBetween(n, x) && !E.allied(n, x); });
-      case 'allycand': return all.filter(function (x) { return !E.allied(n, x) && !E.warBetween(n, x); });
+      case 'allycand': return all.filter(function (x) { return E.allianceType(n, x) !== 'alliance' && !E.warBetween(n, x); });
+      case 'defcand': return all.filter(function (x) { return !E.allied(n, x) && !E.warBetween(n, x); });
       case 'allied': return E.allies(n);
       case 'enemy': return E.enemiesOf(n);
       case 'trade': return all.filter(function (x) { return !E.warBetween(n, x) && !E.hasPact(n, x, 'trade'); });
