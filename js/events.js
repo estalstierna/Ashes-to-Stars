@@ -38,14 +38,14 @@ G.events = (function () {
       text: 'Engineers have found an intact stockpile of Long War kinetic warheads. {other} has quietly offered to buy them.',
       choices: [
         { t: 'Dismantle them safely', r: function () { tre(-0.005); S().earth = U.clamp(S().earth + 0.5, 0, 100); return 'The warheads are destroyed. One less nightmare on Earth.'; } },
-        { t: 'Sell to {otherName}', r: function (c) { tre(0.025); E.changeRel(N(), c.o, 15); c.o.army *= 1.05; return 'The money is good. You try not to think about where they will land.'; } },
-        { t: 'Keep them', r: function () { N().army *= 1.06; return 'Your arsenal grows. Neighbours take note.'; } }
+        { t: 'Sell to {otherName}', r: function (c) { tre(0.025); E.changeRel(N(), c.o, 15); G.military.scale(c.o, 1.05); return 'The money is good. You try not to think about where they will land.'; } },
+        { t: 'Keep them', r: function () { G.military.scale(N(), 1.06); return 'Your arsenal grows. Neighbours take note.'; } }
       ] },
     { id: 'aicore', w: 1, cond: function () { return L(); },
       title: 'Pre-war AI core recovered',
       text: 'Soldiers recovered a dormant military AI from a bunker. Scientists say it could leap your research forward a decade. Or wake up angry.',
       choices: [
-        { t: 'Study it', r: function () { if (U.chance(0.2)) { N().stability -= 15; N().army *= 0.92; return 'The AI breaks containment and sabotages the defence grid before it is shut down.'; } N().tech += 5; return 'The AI is a goldmine. Tech +5.'; } },
+        { t: 'Study it', r: function () { if (U.chance(0.2)) { N().stability -= 15; G.military.scale(N(), 0.92); return 'The AI breaks containment and sabotages the defence grid before it is shut down.'; } N().tech += 5; return 'The AI is a goldmine. Tech +5.'; } },
         { t: 'Destroy it', r: function () { pop(2); return 'Some things are better left buried.'; } }
       ] },
     { id: 'separatists', w: 2, cond: function () { return L() && N().stability < 55; },
@@ -53,7 +53,7 @@ G.events = (function () {
       text: 'Armed militias in {province} declare independence. They demand autonomy, or they will fight.',
       choices: [
         { t: 'Negotiate autonomy', r: function () { N().pop *= 0.99; N().stability += 8; E.addMod(N(), 'approval', -3, 2); return 'A deal is struck. The nation is a little smaller but calmer.'; } },
-        { t: 'Crush them', r: function () { N().army *= 0.95; N().stability += 4; E.addMod(N(), 'approval', E.gov(N()).elections ? -6 : 2, 2); return 'The rebellion is crushed. The scars will last.'; } },
+        { t: 'Crush them', r: function () { G.military.scale(N(), 0.95); N().stability += 4; E.addMod(N(), 'approval', E.gov(N()).elections ? -6 : 2, 2); return 'The rebellion is crushed. The scars will last.'; } },
         { t: 'Let them go', r: function () { N().pop *= 0.94; N().gdp *= 0.95; N().stability += 12; return 'The province leaves. Peace, at the cost of land.'; } }
       ],
       ctx: function (c) { c.province = U.pick(['the North', 'the coastal region', 'the eastern highlands', 'the old capital', 'the mining districts']); } },
@@ -94,7 +94,7 @@ G.events = (function () {
       title: 'Mercenaries for hire',
       text: 'The {merc}, a battle-hardened private army, offers their services for the war.',
       choices: [
-        { t: 'Hire them (1.5% GDP)', r: function () { tre(-0.015); N().army *= 1.2; return 'The mercenaries join your lines.'; } },
+        { t: 'Hire them (1.5% GDP)', r: function () { tre(-0.015); G.military.scale(N(), 1.2); return 'The mercenaries join your lines.'; } },
         { t: 'Decline', r: function () { return 'They sign with someone else.'; } }
       ],
       ctx: function (c) { c.merc = U.pick(['Iron Wolves', 'Black Meridian Group', 'Ashfall Company', 'Ares Contractors']); } },
@@ -150,7 +150,7 @@ G.events = (function () {
       text: 'Your off-world colonists complain of "taxation without representation" and threaten to stop shipments.',
       choices: [
         { t: 'Grant them representation', r: function () { N().stability += 3; E.addMod(N(), 'space', 0.2, 5); return 'The colonies rejoice. Productivity soars.'; } },
-        { t: 'Send in the marines', r: function () { E.addMod(N(), 'space', -0.2, 3); N().army *= 0.98; return 'Order is restored. Resentment simmers in the domes.'; } }
+        { t: 'Send in the marines', r: function () { E.addMod(N(), 'space', -0.2, 3); G.military.scale(N(), 0.98); return 'Order is restored. Resentment simmers in the domes.'; } }
       ] },
     { id: 'cult', w: 1, cond: function () { return L(); },
       title: 'The Children of the Ash',
@@ -257,7 +257,7 @@ G.events = (function () {
       title: 'Black market contract',
       text: 'Smugglers want to use your shipping lanes to move weapons to {otherName}. The pay is enormous.',
       choices: [
-        { t: 'Accept', r: function (c) { wealth(120); c.o.army *= 1.03; if (U.chance(0.3)) { inf(-15); pop(-12); return 'Customs agents raid your warehouses. Your reputation is in tatters.'; } return 'The money comes in. You sleep less well.'; } },
+        { t: 'Accept', r: function (c) { wealth(120); G.military.scale(c.o, 1.03); if (U.chance(0.3)) { inf(-15); pop(-12); return 'Customs agents raid your warehouses. Your reputation is in tatters.'; } return 'The money comes in. You sleep less well.'; } },
         { t: 'Decline', r: function () { return 'You keep your hands clean.'; } }
       ] },
     { id: 'corp-strike', w: 2, cond: function () { return P().role === 'corporate'; },
@@ -283,7 +283,7 @@ G.events = (function () {
       text: 'Second-generation Martians no longer feel loyal to Earth. A movement called Red Dawn wants full independence.',
       choices: [
         { t: 'Grant broad autonomy', r: function () { E.addMod(N(), 'space', 0.15, 10); E.addMod(N(), 'growth', -0.003, 5); return 'Mars governs itself, but trades freely with you.'; } },
-        { t: 'Hold on at all costs', r: function () { N().army *= 0.95; N().stability -= 4; E.addMod(N(), 'space', 0.05, 5); return 'Troopships head for Mars. This will not be the last uprising.'; } }
+        { t: 'Hold on at all costs', r: function () { G.military.scale(N(), 0.95); N().stability -= 4; E.addMod(N(), 'space', 0.05, 5); return 'Troopships head for Mars. This will not be the last uprising.'; } }
       ] }
   ];
 

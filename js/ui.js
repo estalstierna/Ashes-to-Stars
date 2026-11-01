@@ -68,6 +68,7 @@ G.ui = (function () {
   on('howto', function () {
     modal('<div class="kicker">How to play</div><h2>Ashes to Stars</h2>' +
       '<p>Every turn you get <b>2 actions</b>. Then press <b>End Turn</b> and the world moves forward: economies grow, wars rage, elections are held and rivals plot.</p>' +
+      '<p>The <b>Military</b> tab shows your manpower, equipment and branches. As head of state you set conscription and start multi-year military projects there.</p>' +
       '<p><b>Heads of State</b> set taxes and spending, wage wars, sign treaties and run the space programme. Spend more than you earn and the deficit becomes <b>national debt</b>. Debt costs interest, and too much of it slows growth and destabilises the nation.</p>' +
       '<p><b>Politicians, Generals and Executives</b> spend their personal wealth to build influence and popularity, and must seize power through elections, coups or boardroom takeovers.</p>' +
       '<p>Your character ages and can die, lose elections or be overthrown. When that happens you continue as an <b>heir</b> or <b>protégé</b>. Your legacy lives on.</p>' +
@@ -154,8 +155,8 @@ G.ui = (function () {
     var head = '<div class="topbar"><div class="row"><div><div class="year">' + s.year + '</div>' +
       '<div class="era">' + E.era(s.year) + ' · ' + (yrs === 1 ? '1 year' : yrs + ' years') + ' per turn</div></div>' +
       '<div class="row"><span class="tag">⚡ ' + s.ap + ' action' + (s.ap === 1 ? '' : 's') + '</span><button class="icon-btn" data-act="menu">☰</button></div></div></div>';
-    var body = { home: homeTab, act: actTab, world: worldTab, space: spaceTab, log: logTab }[tab]();
-    var tabs = [['home', '🏛️', 'Home'], ['act', '⚡', 'Actions'], ['world', '🌍', 'World'], ['space', '🚀', 'Space'], ['log', '📰', 'News']];
+    var body = { home: homeTab, act: actTab, mil: militaryTab, world: worldTab, space: spaceTab, log: logTab }[tab]();
+    var tabs = [['home', '🏛️', 'Home'], ['act', '⚡', 'Actions'], ['mil', '🎖️', 'Military'], ['world', '🌍', 'World'], ['space', '🚀', 'Space'], ['log', '📰', 'News']];
     app.innerHTML = '<div class="page">' + head + body + '</div>' +
       '<div class="bottom"><div class="bottom-inner">' +
       '<button class="btn primary endturn" data-act="endturn">End Turn ▸ ' + (s.year + yrs) + '</button>' +
@@ -245,11 +246,12 @@ G.ui = (function () {
   function signedMoney(v) { return (v >= 0 ? '+' : '−') + U.money(Math.abs(v)); }
 
   function budgetSummary(n) {
-    var rev = E.revenue(n), sp = E.spending(n), int = E.interest(n), bal = E.balance(n);
+    var rev = E.revenue(n), sp = E.spending(n), int = E.interest(n), bal = E.balance(n), pj = E.projectCost(n);
     var next = n.treasury + bal, dr = E.debtRatio(n);
     var h = '<div style="margin-top:8px">' +
       line('Tax revenue', '+' + U.money(rev), 'good') +
       line('Spending (' + (sp / n.gdp * 100).toFixed(1) + '% of GDP)', '−' + U.money(sp), 'bad') +
+      (pj > 0 ? line('🎖️ Military projects', '−' + U.money(pj), 'bad') : '') +
       (int > 0 ? line('Interest on debt (' + (E.interestRate(n) * 100).toFixed(1) + '%)', '−' + U.money(int), 'bad') : '') +
       line(bal >= 0 ? 'Surplus' : 'Deficit', signedMoney(bal) + ' <span class="small muted">(' + (bal / n.gdp * 100).toFixed(1) + '% of GDP)</span>', bal >= 0 ? 'good' : 'bad', true) +
       '</div><div style="margin-top:10px">';
@@ -346,6 +348,136 @@ G.ui = (function () {
   }
   var resultNext = null;
   on('resultok', function () { closeModal(); var f = resultNext; resultNext = null; if (f) f(); });
+
+  // ---------- military ----------
+  var M = G.military;
+  function menStr(k) { return U.num(k * 1000); }
+
+  function militaryTab() {
+    var n = E.pn(), p = S().player, lead = E.isLeader(), m = n.mil, f = E.funds(n);
+    var pers = M.personnelCost(n), invest = f.mil - pers;
+    var h = '';
+    // Overview
+    h += '<div class="card"><div class="row"><h2>🎖️ Armed Forces</h2><span class="tag">#' + E.rank(n, E.power) + ' in the world</span></div>' +
+      '<div class="grid2" style="margin-top:8px">' +
+      stat('Military power', U.num(E.power(n))) +
+      stat('Manpower', menStr(m.men) + ' <span class="small muted">soldiers</span>') +
+      stat('Equipment value', U.money(M.equipment(n))) +
+      stat('Quality', '×' + M.quality(n).toFixed(2)) +
+      stat('Military budget', U.money(f.mil) + '<span class="small muted">/yr</span>') +
+      stat('Soldier salaries', '<span class="' + (invest < 0 ? 'bad' : '') + '">' + U.money(pers) + '</span><span class="small muted">/yr</span>') +
+      '</div>' +
+      '<div class="small muted" style="margin-top:6px">Power = √(equipment × manpower) × quality. Salaries are paid first; the rest buys equipment' +
+      (invest < 0 ? '. <span class="bad">⚠️ The budget does not even cover salaries, so equipment is rotting.</span>' : ' (' + U.money(invest) + '/yr).') + '</div>' +
+      (p.role === 'general' ? '<div class="row small" style="margin-top:8px"><span>Troop loyalty to you</span><b>' + Math.round(p.influence) + '</b></div>' + bar(p.influence, 'warn') : '') +
+      (!lead ? '<div class="small warn" style="margin-top:8px">You are viewing in read-only mode. Only the head of state commands the military.</div>' : '') +
+      '</div>';
+
+    // Conscription
+    var target = M.targetMen(n);
+    h += '<div class="card"><h3>Conscription</h3>' +
+      '<div class="row"><span>Rate <b id="cv">' + (m.consc * 100).toFixed(1) + '%</b> of population</span><span id="ct">' + menStr(target) + ' target</span></div>' +
+      (lead ? '<input type="range" min="0.2" max="10" step="0.1" value="' + (m.consc * 100).toFixed(1) + '" data-input="consc">' : bar(m.consc * 1000, '')) +
+      '<div id="consc-fx">' + conscEffects(n) + '</div></div>';
+
+    // Branches
+    var sh = M.shares(n);
+    h += '<div class="card"><h3>Branches</h3><div class="small muted" style="margin-bottom:8px">Share of the equipment budget for each branch.</div>';
+    M.BRANCHES.forEach(function (b) {
+      var info = M.BRANCH_INFO[b], locked = b === 'space' && !M.hasSpace(n);
+      var bonus = m.bonus[b] ? ' <span class="good small">+' + Math.round(m.bonus[b] * 100) + '%</span>' : '';
+      h += '<div class="slider-row" style="margin-bottom:12px"><div class="row"><span>' + info.icon + ' <b>' + info.name + '</b>' + bonus + '</span>' +
+        '<span>' + (locked ? '<span class="muted small">🔒 locked</span>' : '<b id="bs-' + b + '">' + Math.round(sh[b] * 100) + '%</b> <span class="muted small">' + U.money(m.eq[b]) + '</span>') + '</span></div>' +
+        (lead && !locked ? '<input type="range" min="0" max="100" value="' + m.alloc[b] + '" data-input="branch" data-k="' + b + '">' : '') +
+        '<div class="small muted">' + info.role + '</div></div>';
+    });
+    h += '</div>';
+
+    // Projects
+    var active = m.active, sl = M.slots(n);
+    h += '<div class="card"><div class="row"><h3>Military projects</h3><span class="tag">' + active.length + '/' + sl + ' slots</span></div>' +
+      '<div class="small muted" style="margin-bottom:8px">Multi-year projects. The yearly cost is added to the national budget. Finished projects give permanent bonuses and unlock new projects. Starting one does not use an action.</div>';
+    if (active.length) {
+      h += '<div class="small" style="font-weight:700;margin:6px 0">In progress</div>';
+      active.forEach(function (a) {
+        var pr = M.project(a.id);
+        h += '<div class="action"><div class="row"><div class="name">' + pr.icon + ' ' + esc(pr.name) + '</div><div class="cost">' + U.money(pr.cost * n.gdp) + '/yr</div></div>' +
+          '<div class="desc">' + esc(pr.desc) + '</div>' +
+          '<div class="row small"><span>Year ' + a.progress + ' of ' + pr.years + '</span><span>' + (pr.years - a.progress) + ' year(s) left</span></div>' + bar(a.progress / pr.years * 100, '') +
+          (lead ? '<button class="btn sm danger" data-act="cancelproj" data-arg="' + pr.id + '">Cancel</button>' : '') + '</div>';
+      });
+    }
+    var avail = M.PROJECTS.filter(function (pr) { return M.projectState(n, pr) === 'available'; });
+    if (avail.length) {
+      h += '<div class="small" style="font-weight:700;margin:10px 0 6px">Available</div>';
+      avail.forEach(function (pr) {
+        var can = lead && active.length < sl;
+        h += '<div class="action"><div class="row"><div class="name">' + pr.icon + ' ' + esc(pr.name) + '</div><div class="cost">' + U.money(pr.cost * n.gdp) + '/yr</div></div>' +
+          '<div class="desc">' + esc(pr.desc) + '</div>' +
+          '<div class="small muted" style="margin-bottom:8px">' + pr.years + ' years · total ≈ ' + U.money(pr.cost * n.gdp * pr.years) + '</div>' +
+          (lead ? '<button class="btn sm ' + (can ? 'blue' : '') + '" data-act="startproj" data-arg="' + pr.id + '" ' + (can ? '' : 'disabled') + '>' + (can ? 'Start project' : 'No free slot') + '</button>' : '') + '</div>';
+      });
+    }
+    var locked = M.PROJECTS.filter(function (pr) { return M.projectState(n, pr) === 'locked'; });
+    if (locked.length) {
+      h += '<div class="small" style="font-weight:700;margin:10px 0 6px">Locked</div>';
+      locked.forEach(function (pr) {
+        h += '<div class="row small" style="padding:6px 0;border-bottom:1px solid #1a2230"><span>🔒 ' + esc(pr.name) + '</span><span class="muted" style="text-align:right">needs ' + esc(M.lockReason(n, pr)) + '</span></div>';
+      });
+    }
+    if (m.done.length) {
+      h += '<div class="small" style="font-weight:700;margin:12px 0 6px">Completed</div>' +
+        m.done.map(function (id) { var pr = M.project(id); return '<span class="tag pact" style="margin-bottom:4px">' + pr.icon + ' ' + esc(pr.name) + '</span>'; }).join(' ');
+    }
+    h += '</div>';
+
+    // Wars
+    var wars = E.warsOf(n);
+    if (wars.length) {
+      h += '<div class="card"><h3>Wars</h3>' + wars.map(function (w) {
+        var enemy = E.nation(w.a === n.id ? w.b : w.a), sc = w.a === n.id ? w.score : -w.score;
+        return '<div class="row small" style="padding:4px 0"><span>⚔️ vs ' + esc(enemy.short) + ' (power ' + U.num(E.power(enemy)) + ')</span><b class="' + (sc >= 0 ? 'good' : 'bad') + '">' + Math.round(sc) + '</b></div>';
+      }).join('') + '<div class="small muted">War score: ±100 decides the war. Use Offensive or Peace in the Actions tab.</div></div>';
+    }
+
+    // Ranking
+    h += '<div class="card"><h3>World military ranking</h3>';
+    E.alive().slice().sort(function (a, b) { return E.power(b) - E.power(a); }).slice(0, 8).forEach(function (x, i) {
+      h += '<div class="row small" style="padding:4px 0"><span>' + (i + 1) + '. <span class="dot" style="background:' + x.color + '"></span>' + esc(x.short) + (x === n ? ' (you)' : '') + '</span>' +
+        '<span>' + U.num(E.power(x)) + ' <span class="muted">· ' + menStr(x.mil.men) + ' men</span></span></div>';
+    });
+    return h + '</div>';
+  }
+
+  function conscEffects(n) {
+    var g = M.conscGrowthPenalty(n), a = M.conscApprovalPenalty(n), sal = M.targetMen(n) * (n.gdp / n.pop) * 0.4 / 1000;
+    return '<div class="small" style="margin-top:6px">' +
+      '<div class="row"><span class="muted">Salaries at target</span><span>' + U.money(sal) + '/yr</span></div>' +
+      '<div class="row"><span class="muted">Economy (lost workforce)</span><span class="' + (g > 0 ? 'bad' : 'good') + '">' + (g > 0 ? '−' + (g * 100).toFixed(1) + '% growth' : 'no effect') + '</span></div>' +
+      '<div class="row"><span class="muted">Public approval</span><span class="' + (a > 0 ? 'bad' : 'good') + '">' + (a > 0 ? '−' + a.toFixed(0) : 'no effect') + (a > 0 && E.atWar(n) ? ' (halved in wartime)' : '') + '</span></div>' +
+      '<div class="muted" style="margin-top:4px">Up to 1% is free. Above that, conscription hurts the economy and the public mood. Soldiers are recruited gradually over a few years.</div></div>';
+  }
+  on('consc', function (v) {
+    var n = E.pn(); n.mil.consc = +v / 100;
+    $('cv').textContent = (+v).toFixed(1) + '%';
+    $('ct').textContent = menStr(M.targetMen(n)) + ' target';
+    $('consc-fx').innerHTML = conscEffects(n);
+    E.save();
+  });
+  on('branch', function (v, el) {
+    var n = E.pn(); n.mil.alloc[el.getAttribute('data-k')] = +v;
+    var sh = M.shares(n);
+    M.BRANCHES.forEach(function (b) { var x = $('bs-' + b); if (x) x.textContent = Math.round(sh[b] * 100) + '%'; });
+    E.save();
+  });
+  on('startproj', function (id) {
+    var n = E.pn();
+    if (M.startProject(n, id)) { E.save(); keepScroll(render); toast(M.project(id).name + ' started.'); }
+  });
+  on('cancelproj', function (id) {
+    if (!confirm('Cancel this project? Money already spent is lost.')) return;
+    M.cancelProject(E.pn(), id); E.save(); keepScroll(render);
+  });
 
   function worldTab() {
     var me = E.pn();
@@ -454,7 +586,7 @@ G.ui = (function () {
     var html = '<div class="kicker">' + f.year + ' → ' + s.year + '</div><h2>' + (sm.years === 1 ? 'A year passes' : sm.years + ' years pass') + '</h2>';
     if (f.nation === n.id) {
       html += d('GDP', f.gdp, n.gdp, U.money, true) + d('Population', f.pop, n.pop, U.people, true) +
-        d('Military', f.army, n.army, function () { return U.num(E.power(n)); }, true) +
+        d('Military power', f.army, E.power(n), function (v) { return U.num(v); }, true) +
         d('Approval', f.approval, n.approval, Math.round) + d('Stability', f.stability, n.stability, Math.round) +
         d('Tech', f.tech, n.tech, function (v) { return v.toFixed(1); });
       if (f.treasury !== undefined) {

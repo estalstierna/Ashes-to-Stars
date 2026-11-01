@@ -52,12 +52,12 @@ G.actions = (function () {
       } },
 
     // ----- Leader: Military -----
-    { id: 'mobilize', cat: 'Military', role: 'leader', name: 'Mobilize forces', cost: 0.02,
-      desc: 'Call up reserves and buy equipment. Military +15%.',
-      run: function () { var n = N(); n.army *= 1.15; E.addMod(n, 'approval', -2, 1); return 'Factories retool for war. The army swells.'; } },
-    { id: 'weapons', cat: 'Military', role: 'leader', name: 'Next-gen weapons', cost: 0.015,
-      desc: 'Drone swarms, railguns, orbital lasers. Military +8% and tech +1.',
-      run: function () { var n = N(); n.army *= 1.08; n.tech += 1; return 'New weapon systems roll off the production lines.'; } },
+    { id: 'mobilize', cat: 'Military', role: 'leader', name: 'Call up reserves', cost: 0.01,
+      desc: 'Instantly call up reservists: manpower +25% (it drifts back to your conscription level over a few years).',
+      run: function () { var n = N(); n.mil.men *= 1.25; E.addMod(n, 'approval', -3, 1); return 'Reservists report to their units. The army swells.'; } },
+    { id: 'weapons', cat: 'Military', role: 'leader', name: 'Emergency arms purchase', cost: 0.015,
+      desc: 'Buy equipment off the shelf for every branch. Equipment +10%.',
+      run: function () { G.military.scale(N(), 1.1); return 'New weapon systems roll off the production lines.'; } },
     { id: 'war', cat: 'Military', role: 'leader', name: 'Declare war', cost: 0.01, target: 'reachable',
       desc: 'Attack another nation. Win and you take territory, or conquer them entirely if they are small.',
       run: function (id) {
@@ -70,11 +70,11 @@ G.actions = (function () {
       desc: 'Throw everything into a decisive push. Big swing in the war, heavy losses.',
       run: function (id) {
         var n = N(), t = E.nation(id), w = E.warBetween(n, t);
-        var ratio = E.power(n) / (E.power(n) + E.power(t));
+        var ratio = E.power(n) / (E.power(n) + E.power(t, true));
         var swing = (ratio - 0.35) * 60 + U.randInt(-10, 10);
         var sign = w.a === n.id ? 1 : -1;
         w.score = U.clamp(w.score + swing * sign, -100, 100);
-        n.army *= 0.9; t.army *= 0.85;
+        G.military.losses(n, 0.08); G.military.losses(t, 0.12);
         var mine = w.score * sign;
         if (mine >= 100) { E.capitulate(w, n, t); return 'The offensive breaks them! ' + t.name + ' collapses.'; }
         if (mine <= -100) { E.capitulate(w, t, n); return 'The offensive is a catastrophe. Your lines collapse.'; }
@@ -230,7 +230,7 @@ G.actions = (function () {
       } },
     { id: 'lobbymil', cat: 'Military', role: 'general', name: 'Lobby for the army', cost: 2,
       desc: 'Push the government to raise military spending. Military up, influence up.',
-      run: function () { var n = N(); n.alloc.mil *= 1.15; E.syncSpend(n); n.army *= 1.03; P().influence = U.clamp(P().influence + 3, 0, 100); return 'The budget committee bends to your will.'; } },
+      run: function () { var n = N(); n.alloc.mil *= 1.15; E.syncSpend(n); G.military.scale(n, 1.03); P().influence = U.clamp(P().influence + 3, 0, 100); return 'The budget committee bends to your will.'; } },
 
     // Corporate
     { id: 'expand', cat: 'Business', role: 'corporate', name: 'Expand the business', cost: 0,

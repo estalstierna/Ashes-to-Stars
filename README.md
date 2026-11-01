@@ -13,7 +13,12 @@ A text-based grand strategy RPG for mobile browsers.
   - **General**: stage a coup.
   - **Corporate Executive**: buy the state.
 - **Politics:** elections, coups, government changes, approval and stability.
-- **Military:** wars with war scores, offensives, peace deals, territory changes, annexations and rebellions.
+- **Military** (its own tab):
+  - Manpower comes from a conscription slider. Higher conscription costs economic growth and approval.
+  - Equipment is split across four branches: Army, Navy, Air Force and Space Force.
+  - Military power = √(equipment × manpower) × quality.
+  - 15 multi-year military projects form a tech tree, from drone swarms to the Stellar Lance.
+  - Wars with war scores, offensives, peace deals, annexations and rebellions.
 - **Economy:** set taxes and spending per sector (military, economy, welfare, science, space) and see your surplus or deficit live. Deficits become national debt, with interest that rises as debt grows. Also trade agreements and Earth restoration.
 - **Space race:** 12 milestones, from Lunar Outpost to Mars, the asteroid belt, Titan, a Dyson swarm, exoplanet colonies and Kardashev II.
 - **Characters age and die.** When yours dies, loses an election or is overthrown, you continue as an heir or protégé.
@@ -33,6 +38,7 @@ To install it on a phone, open the URL and choose **Share → Add to Home Screen
 |---|---|
 | `js/data.js` | Nations, governments, space milestones and lore |
 | `js/engine.js` | Simulation: economy, wars, elections, coups, succession, saving |
+| `js/military.js` | Manpower, branches, military power and military projects |
 | `js/actions.js` | Everything the player can do, per role |
 | `js/events.js` | Procedural events |
 | `js/ui.js` | Screens and interface |

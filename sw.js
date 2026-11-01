@@ -1,8 +1,8 @@
 // Offline cache. Bump VERSION when files change so phones pick up updates.
-var VERSION = 'ats-v2';
+var VERSION = 'ats-v3';
 var FILES = [
   './', './index.html', './css/style.css', './manifest.webmanifest',
-  './js/util.js', './js/names.js', './js/data.js', './js/engine.js', './js/actions.js', './js/events.js', './js/ui.js',
+  './js/util.js', './js/names.js', './js/data.js', './js/engine.js', './js/military.js', './js/actions.js', './js/events.js', './js/ui.js',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'
 ];
 self.addEventListener('install', function (e) {

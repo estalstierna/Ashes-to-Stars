@@ -3,7 +3,6 @@ var G = window.G || (window.G = {});
 
 G.engine = (function () {
   var U = G.util, D = G.data;
-  var ARMY_DECAY = 0.08;
   var SPACE_K = 22;
   var SAVE_VERSION = 1;
 
@@ -67,11 +66,12 @@ G.engine = (function () {
   // Interest rises as debt grows: lenders get nervous above 60% of GDP.
   function interestRate(n) { return Math.min(0.15, 0.03 + Math.max(0, debtRatio(n) - 0.6) * 0.06); }
   function interest(n) { return debt(n) * interestRate(n); }
+  function projectCost(n) { return n.mil ? G.military.projectCost(n) : 0; }
   // Yearly balance: positive = surplus, negative = deficit.
-  function balance(n) { return revenue(n) - spending(n) - interest(n); }
+  function balance(n) { return revenue(n) - spending(n) - interest(n) - projectCost(n); }
   // How far a government can borrow for actions.
   function borrowLimit(n) { return n.gdp * 1.2; }
-  function power(n) { return n.army * (1 + n.tech / 50); }
+  function power(n, defending) { return G.military.power(n, defending); }
   function milestoneIndex(n) {
     var ms = D.milestones, i = 0;
     while (i + 1 < ms.length && n.space >= ms[i + 1].points) i++;
@@ -119,8 +119,10 @@ G.engine = (function () {
   function canReach(a, b) {
     if (a.id === b.id || !b.alive) return false;
     if (a.neighbors.indexOf(b.id) >= 0) return true;
-    // Global reach: big militaries or advanced space programmes can strike anywhere.
-    return power(a) > worldMaxPower() * 0.45 || milestoneIndex(a) >= 4;
+    // Global reach: a strong navy/air/space force, reach projects or an advanced space programme.
+    var M = G.military;
+    var maxProj = Math.max.apply(null, alive().map(M.projection));
+    return M.hasReach(a) || M.projection(a) >= maxProj * 0.35 || milestoneIndex(a) >= 4;
   }
   function worldMaxPower() { return Math.max.apply(null, alive().map(power)); }
   function rank(n, fn) {
@@ -152,9 +154,8 @@ G.engine = (function () {
       n.rel = {};
       n.warYears = 0;
       n.lastElection = 2077 - U.randInt(0, 3);
-      n.army = 0;
       s.nations[n.id] = n;
-      n.army = (funds(n).mil / ARMY_DECAY) * n.armyMult;
+      G.military.init(n, funds(n).mil, n.armyMult);
       n.leader = makeLeader(n);
     });
     // Initial relations: rivals are hostile, neighbours wary.
@@ -213,6 +214,8 @@ G.engine = (function () {
     // Economy: logistic catch-up towards the tech ceiling + investment.
     var growth = 0.05 * (1 - pc / ceil) + econR * 0.5 + modSum(n, 'growth');
     if (war) growth -= 0.025;
+    // Conscripts are taken out of the workforce.
+    growth -= G.military.conscGrowthPenalty(n);
     // Heavy debt crowds out investment.
     growth -= Math.max(0, debtRatio(n) - 0.9) * 0.02;
     if (n.stability < 30) growth -= (30 - n.stability) * 0.001;
@@ -237,15 +240,15 @@ G.engine = (function () {
     n.space += spaceRate(n) * (1 + modSum(n, 'space'));
     checkMilestones(n, before);
 
-    // Military.
-    n.army = Math.max(1, n.army * (1 - ARMY_DECAY) + f.mil);
+    // Military: manpower, equipment and projects.
+    G.military.simulate(n, f.mil, !(isPlayerNation && isLeader()));
 
     // Treasury: surplus is saved, deficits become national debt.
     n.treasury += balance(n);
     var dr = debtRatio(n);
 
     // Approval and stability.
-    var apT = 50 + (growth - 0.02) * 400 + welR * 250 - n.warYears * 2 - (n.tax - 0.2) * 120 + modSum(n, 'approval');
+    var apT = 50 + (growth - 0.02) * 400 + welR * 250 - n.warYears * 2 - (n.tax - 0.2) * 120 + modSum(n, 'approval') - G.military.conscApprovalPenalty(n);
     if (n.gov === 'junta') apT += milR * 150;
     apT = U.clamp(apT, 5, 95);
     n.approval = U.clamp(n.approval + (apT - n.approval) * 0.25, 0, 100);
@@ -306,7 +309,7 @@ G.engine = (function () {
   // ---------- wars ----------
   function declareWar(a, b, quiet) {
     if (warBetween(a, b)) return;
-    S().wars.push({ a: a.id, b: b.id, start: S().year, score: 0, aStart: a.army, bStart: b.army });
+    S().wars.push({ a: a.id, b: b.id, start: S().year, score: 0, aStart: power(a), bStart: power(b, true), v2: true });
     S().pacts = S().pacts.filter(function (p) { return !((p.a === a.id && p.b === b.id) || (p.a === b.id && p.b === a.id)); });
     changeRel(a, b, -60);
     var involvesPlayer = a.id === S().player.nation || b.id === S().player.nation;
@@ -331,18 +334,17 @@ G.engine = (function () {
   function simulateWar(w) {
     var a = nation(w.a), b = nation(w.b);
     if (!a.alive || !b.alive) { endWar(w); return; }
-    var pa = power(a), pb = power(b);
-    var lossA = Math.min(a.army * 0.35, pb * 0.06 / (1 + a.tech / 50));
-    var lossB = Math.min(b.army * 0.35, pa * 0.06 / (1 + b.tech / 50));
-    a.army = Math.max(1, a.army - lossA);
-    b.army = Math.max(1, b.army - lossB);
-    w.score = U.clamp(w.score + ((pa - pb) / (pa + pb)) * 35 + U.randInt(-6, 6), -100, 100);
-    a.pop *= 0.998; b.pop *= 0.998;
+    // b is the defender (missile shields help).
+    var pa = power(a), pb = power(b, true), tot = pa + pb || 1;
+    G.military.losses(a, U.clamp(0.12 * pb / tot, 0.01, 0.25));
+    G.military.losses(b, U.clamp(0.12 * pa / tot, 0.01, 0.25));
+    w.score = U.clamp(w.score + ((pa - pb) / tot) * 35 + U.randInt(-6, 6), -100, 100);
+    a.pop *= 0.999; b.pop *= 0.999;
     var superWar = a.gdp > 8000 && b.gdp > 8000;
     S().earth = U.clamp(S().earth - (superWar ? 0.8 : 0.2), 0, 100);
 
-    if (w.score >= 100 || b.army < w.bStart * 0.08) return capitulate(w, a, b);
-    if (w.score <= -100 || a.army < w.aStart * 0.08) return capitulate(w, b, a);
+    if (w.score >= 100 || power(b, true) < w.bStart * 0.1) return capitulate(w, a, b);
+    if (w.score <= -100 || power(a) < w.aStart * 0.1) return capitulate(w, b, a);
 
     // AI peace: involving the player only through player actions/events.
     var p = S().player.nation;
@@ -382,7 +384,7 @@ G.engine = (function () {
   function annex(winner, loser) {
     winner.pop += loser.pop * 0.9;
     winner.gdp += loser.gdp * 0.8;
-    winner.army += loser.army * 0.3;
+    G.military.transfer(loser, winner, 0.6);
     winner.treasury += Math.max(0, loser.treasury);
     winner.space += loser.space * 0.5;
     winner.tech = Math.max(winner.tech, (winner.tech * 3 + loser.tech) / 4);
@@ -421,10 +423,12 @@ G.engine = (function () {
       d.alive = true;
       d.pop = owner.pop * frac; d.gdp = owner.gdp * frac;
       owner.pop -= d.pop; owner.gdp -= d.gdp;
-      d.army = owner.army * frac * 0.8; owner.army *= 1 - frac * 0.5;
       d.tech = owner.tech * 0.95; d.space = owner.space * 0.1;
       d.treasury = d.gdp * 0.02; d.stability = 50; d.approval = 65; d.warYears = 0; d.mods = [];
       d.gov = U.pick(['democracy', 'democracy', 'junta', 'autocracy']);
+      syncSpend(d);
+      G.military.init(d, funds(d).mil, 0.6);
+      G.military.scale(owner, 1 - frac * 0.5);
       d.leader = makeLeader(d);
       d.annexedBy = null;
       d.neighbors.forEach(function (nid) { if (ns[nid].neighbors.indexOf(d.id) < 0) ns[nid].neighbors.push(d.id); });
@@ -647,7 +651,7 @@ G.engine = (function () {
 
   function snapshot() {
     var n = pn(), p = S().player;
-    return { year: S().year, treasury: n.treasury, gdp: n.gdp, pop: n.pop, army: n.army, approval: n.approval, stability: n.stability,
+    return { year: S().year, treasury: n.treasury, gdp: n.gdp, pop: n.pop, army: power(n), approval: n.approval, stability: n.stability,
       tech: n.tech, space: n.space, influence: p.influence, popularity: p.popularity, wealth: p.wealth, nation: n.id };
   }
 
@@ -682,7 +686,13 @@ G.engine = (function () {
       if (st.version !== SAVE_VERSION) return false;
       G.state = st;
       // Older saves: derive per-sector spending from budget weights.
-      for (var id in st.nations) if (!st.nations[id].spend) syncSpend(st.nations[id]);
+      for (var id in st.nations) {
+        var sn = st.nations[id];
+        if (!sn.spend) syncSpend(sn);
+        if (!sn.mil) { G.military.init(sn, funds(sn).mil, 0.8); delete sn.army; }
+      }
+      // Older saves: war strength baselines were measured in a different unit.
+      st.wars.forEach(function (w) { if (!w.v2) { w.aStart = power(st.nations[w.a]); w.bStart = power(st.nations[w.b], true); w.v2 = true; } });
       return true;
     } catch (e) { return false; }
   }
@@ -694,7 +704,7 @@ G.engine = (function () {
     nation: nation, alive: alive, pn: pn, isLeader: isLeader, gov: gov, title: title, roleTitle: roleTitle, log: log,
     yearsPerTurn: yearsPerTurn, era: era, allocShares: allocShares, revenue: revenue, funds: funds, power: power,
     SECTORS: SECTORS, syncSpend: syncSpend, spending: spending, debt: debt, debtRatio: debtRatio, interestRate: interestRate,
-    interest: interest, balance: balance, borrowLimit: borrowLimit,
+    interest: interest, balance: balance, borrowLimit: borrowLimit, projectCost: projectCost,
     milestoneIndex: milestoneIndex, spaceRate: spaceRate, relation: relation, changeRel: changeRel, wars: wars, warsOf: warsOf, atWar: atWar,
     warBetween: warBetween, enemiesOf: enemiesOf, hasPact: hasPact, addPact: addPact, canReach: canReach, rank: rank,
     declareWar: declareWar, endWar: endWar, cede: cede, capitulate: capitulate, addMod: addMod, becomeLeader: becomeLeader,
