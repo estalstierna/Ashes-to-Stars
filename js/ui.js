@@ -363,13 +363,19 @@ G.ui = (function () {
       '<div class="grid2" style="margin-top:8px">' +
       stat('Military power', U.num(E.power(n))) +
       stat('Manpower', menStr(m.men) + ' <span class="small muted">soldiers</span>') +
-      stat('Equipment value', U.money(M.equipment(n))) +
+      stat('Equipment stock', U.money(M.equipment(n))) +
       stat('Quality', '×' + M.quality(n).toFixed(2)) +
       stat('Military budget', U.money(f.mil) + '<span class="small muted">/yr</span>') +
       stat('Soldier salaries', '<span class="' + (invest < 0 ? 'bad' : '') + '">' + U.money(pers) + '</span><span class="small muted">/yr</span>') +
       '</div>' +
-      '<div class="small muted" style="margin-top:6px">Power = √(equipment × manpower) × quality. Salaries are paid first; the rest buys equipment' +
-      (invest < 0 ? '. <span class="bad">⚠️ The budget does not even cover salaries, so equipment is rotting.</span>' : ' (' + U.money(invest) + '/yr).') + '</div>' +
+      // Where the yearly military budget goes.
+      '<div style="margin-top:10px">' +
+      '<div class="delta"><span>Military budget</span><span>' + U.money(f.mil) + '/yr</span></div>' +
+      '<div class="delta"><span>− Soldier salaries</span><span class="bad">−' + U.money(pers) + '/yr</span></div>' +
+      '<div class="delta" style="font-weight:700"><span>= New equipment</span><span class="' + (invest < 0 ? 'bad' : 'good') + '">' + U.money(Math.max(0, invest)) + '/yr</span></div></div>' +
+      '<div class="small muted" style="margin-top:6px">' +
+      (invest < 0 ? '<span class="bad">⚠️ The budget does not even cover salaries, so equipment is rotting.</span> ' : '') +
+      'The <b>equipment stock</b> is everything bought over the years. About 8% of it wears out every year, so the stock is much larger than one year\'s budget. Power = √(equipment × manpower) × quality.</div>' +
       (p.role === 'general' ? '<div class="row small" style="margin-top:8px"><span>Troop loyalty to you</span><b>' + Math.round(p.influence) + '</b></div>' + bar(p.influence, 'warn') : '') +
       (!lead ? '<div class="small warn" style="margin-top:8px">You are viewing in read-only mode. Only the head of state commands the military.</div>' : '') +
       '</div>';
@@ -382,13 +388,14 @@ G.ui = (function () {
       '<div id="consc-fx">' + conscEffects(n) + '</div></div>';
 
     // Branches
-    var sh = M.shares(n);
-    h += '<div class="card"><h3>Branches</h3><div class="small muted" style="margin-bottom:8px">Share of the equipment budget for each branch.</div>';
+    var sh = M.shares(n), newEq = Math.max(0, invest);
+    h += '<div class="card"><h3>Branches</h3><div class="small muted" style="margin-bottom:8px">How the yearly equipment money (' + U.money(newEq) + '/yr) is split. <b>Stock</b> is the equipment each branch already has.</div>';
     M.BRANCHES.forEach(function (b) {
       var info = M.BRANCH_INFO[b], locked = b === 'space' && !M.hasSpace(n);
       var bonus = m.bonus[b] ? ' <span class="good small">+' + Math.round(m.bonus[b] * 100) + '%</span>' : '';
       h += '<div class="slider-row" style="margin-bottom:12px"><div class="row"><span>' + info.icon + ' <b>' + info.name + '</b>' + bonus + '</span>' +
-        '<span>' + (locked ? '<span class="muted small">🔒 locked</span>' : '<b id="bs-' + b + '">' + Math.round(sh[b] * 100) + '%</b> <span class="muted small">' + U.money(m.eq[b]) + '</span>') + '</span></div>' +
+        '<span>' + (locked ? '<span class="muted small">🔒 locked</span>' : '<b id="bs-' + b + '">' + Math.round(sh[b] * 100) + '%</b> · <span id="bb-' + b + '">' + U.money(newEq * sh[b]) + '</span>/yr') + '</span></div>' +
+        (locked ? '' : '<div class="row small muted"><span></span><span>Stock: ' + U.money(m.eq[b]) + '</span></div>') +
         (lead && !locked ? '<input type="range" min="0" max="100" value="' + m.alloc[b] + '" data-input="branch" data-k="' + b + '">' : '') +
         '<div class="small muted">' + info.role + '</div></div>';
     });
@@ -467,8 +474,11 @@ G.ui = (function () {
   });
   on('branch', function (v, el) {
     var n = E.pn(); n.mil.alloc[el.getAttribute('data-k')] = +v;
-    var sh = M.shares(n);
-    M.BRANCHES.forEach(function (b) { var x = $('bs-' + b); if (x) x.textContent = Math.round(sh[b] * 100) + '%'; });
+    var sh = M.shares(n), newEq = Math.max(0, E.funds(n).mil - M.personnelCost(n));
+    M.BRANCHES.forEach(function (b) {
+      var x = $('bs-' + b); if (x) x.textContent = Math.round(sh[b] * 100) + '%';
+      var y = $('bb-' + b); if (y) y.textContent = U.money(newEq * sh[b]);
+    });
     E.save();
   });
   on('startproj', function (id) {
