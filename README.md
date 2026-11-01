@@ -18,7 +18,11 @@ A text-based grand strategy RPG for mobile browsers.
   - Equipment is split across four branches: Army, Navy, Air Force and Space Force.
   - Military power = √(equipment × manpower) × quality.
   - 15 multi-year military projects form a tech tree, from drone swarms to the Stellar Lance.
-  - Wars with war scores, offensives, peace deals, annexations and rebellions.
+  - **War goals:** conquer territory, reparations, regime change, total conquest (only against much smaller nations) or liberation of a nation the enemy occupies. Each goal changes how much the world fears you.
+  - **Front line:** provinces along the border are occupied as the war score moves, shown striped on the map.
+  - **Peace talks:** pick your terms (occupied provinces, reparations, regime change, annexation, liberation, or concessions) and see how likely the other side is to accept.
+  - AI enemies can offer you peace when they are losing, or demand your surrender when they are winning.
+  - AI wars end with the winner keeping the land its armies hold.
 - **Economy tab:**
   - GDP, growth, wealth per person and how much of the economy's potential it has reached.
   - A breakdown of exactly why the economy grows or shrinks.
@@ -74,6 +78,7 @@ To install it on a phone, open the URL and choose **Share → Add to Home Screen
 | `js/data.js` | Nations, governments, space milestones and lore |
 | `js/engine.js` | Simulation: economy, wars, elections, coups, succession, saving |
 | `js/military.js` | Manpower, branches, military power and military projects |
+| `js/war.js` | War goals, front lines and peace negotiations |
 | `js/actions.js` | Everything the player can do, per role |
 | `js/events.js` | Procedural events and the event queue |
 | `js/events-extra.js` | More events, plus yearly world news |

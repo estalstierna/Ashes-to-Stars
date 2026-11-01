@@ -105,6 +105,32 @@ G.territory = (function () {
     return all > 0 ? mine / all : 0;
   }
 
+  // Share of a nation's current land that a list of provinces represents.
+  function shareOf(list, id) {
+    if (!enabled()) return 0;
+    var mine = weightOf(owned(id)), part = weightOf(list.filter(function (i) { return S().prov[i] === id; }));
+    return mine > 0 ? part / mine : 0;
+  }
+  function transfer(list, toId) {
+    if (!enabled()) return;
+    list.forEach(function (i) { S().prov[i] = toId; });
+  }
+  // Next province to occupy on a front: an enemy province bordering land the attacker owns or
+  // already occupies. Overseas wars land on the coast closest to the attacker.
+  function frontCandidate(attId, defId, occupied) {
+    if (!enabled()) return -1;
+    var prov = S().prov, list = P(), occ = {};
+    occupied.forEach(function (i) { occ[i] = true; });
+    var best = -1, bd = 1e9, ref = center(attId) || [500, 250];
+    list.forEach(function (p, i) {
+      if (prov[i] !== defId || occ[i]) return;
+      var touches = p.a.some(function (j) { return prov[j] === attId || occ[j]; });
+      var d = Math.hypot(p.c[0] - ref[0], p.c[1] - ref[1]) - (touches ? 10000 : 0);
+      if (d < bd) { bd = d; best = i; }
+    });
+    return best;
+  }
+
   // Nations whose provinces touch this nation's provinces on the map.
   function bordering(id) {
     if (!enabled()) return [];
@@ -123,5 +149,5 @@ G.territory = (function () {
     return weightOf(owned(id)) / all;
   }
 
-  return { init: init, owned: owned, center: center, cede: cede, annex: annex, restore: restore, uprising: uprising, homeShare: homeShare, landShare: landShare, bordering: bordering, enabled: enabled };
+  return { init: init, owned: owned, center: center, cede: cede, annex: annex, restore: restore, uprising: uprising, homeShare: homeShare, landShare: landShare, bordering: bordering, shareOf: shareOf, transfer: transfer, frontCandidate: frontCandidate, enabled: enabled };
 })();

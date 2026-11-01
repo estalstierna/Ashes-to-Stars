@@ -122,8 +122,14 @@
     if (wars.length) {
       h += '<div class="card"><h3>Wars</h3>' + wars.map(function (w) {
         var enemy = E.nation(w.a === n.id ? w.b : w.a), sc = w.a === n.id ? w.score : -w.score;
-        return '<div class="row small" style="padding:4px 0"><span>⚔️ vs ' + esc(enemy.short) + ' (power ' + U.num(E.power(enemy)) + ')</span><b class="' + (sc >= 0 ? 'good' : 'bad') + '">' + Math.round(sc) + '</b></div>';
-      }).join('') + '<div class="small muted">War score: ±100 decides the war. Use Offensive or Peace in the Actions tab.</div></div>';
+        var goal = G.war.GOALS[w.goal || 'conquer'], mine = G.war.occupiedBy(w, n).length, theirs = G.war.occupiedBy(w, enemy).length;
+        var label = w.independence ? (w.a === n.id ? 'Your war of independence' : 'Uprising') : (w.a === n.id ? goal.icon + ' ' + goal.name : 'Defending');
+        return '<div style="padding:6px 0;border-bottom:1px solid #1a2230"><div class="row small"><span>⚔️ vs <b>' + esc(enemy.short) + '</b> · ' + esc(label) + '</span><b class="' + (sc >= 0 ? 'good' : 'bad') + '">' + Math.round(sc) + '</b></div>' +
+          bar(50 + sc / 2, sc >= 0 ? 'good' : 'bad') +
+          '<div class="row small muted"><span>You occupy ' + mine + ' provinces · they occupy ' + theirs + '</span><span>power ' + U.num(E.power(enemy)) + '</span></div>' +
+          (lead ? '<div class="row" style="gap:6px;margin-top:6px"><button class="btn sm" data-act="target" data-arg="offensive|' + enemy.id + '">Offensive</button>' +
+            '<button class="btn sm blue" data-act="target" data-arg="peace|' + enemy.id + '">Negotiate peace</button></div>' : '') + '</div>';
+      }).join('') + '<div class="small muted" style="margin-top:6px">War score: ±100 decides the war. The front line moves with it: occupied provinces show striped on the map.</div></div>';
     }
 
     // Ranking

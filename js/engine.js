@@ -522,7 +522,8 @@ G.engine = (function () {
     if (warBetween(a, b)) return;
     var s = S();
     s.warSeq = (s.warSeq || 0) + 1;
-    var w = { id: s.warSeq, parent: opts.parent || null, a: a.id, b: b.id, start: s.year, score: 0, aStart: power(a), bStart: power(b, true), v2: true };
+    var w = { id: s.warSeq, parent: opts.parent || null, a: a.id, b: b.id, start: s.year, score: 0, aStart: power(a), bStart: power(b, true), v2: true,
+      goal: opts.goal || 'conquer', occA: [], occB: [] };
     s.wars.push(w);
     s.pacts = s.pacts.filter(function (p) { return !((p.a === a.id && p.b === b.id) || (p.a === b.id && p.b === a.id)); });
     changeRel(a, b, -60);
@@ -534,7 +535,8 @@ G.engine = (function () {
     });
     // Starting a war frightens the world, more so against small or friendly targets.
     if (!opts.parent && !opts.noAllies) {
-      addThreat(a, 8 + (power(a) > power(b) * 3 ? 6 : 0) + (relation(a, b) > -20 ? 4 : 0));
+      var goalThreat = G.war && G.war.GOALS[w.goal] ? G.war.GOALS[w.goal].threat : 0;
+      addThreat(a, Math.max(0, 8 + (power(a) > power(b) * 3 ? 6 : 0) + (relation(a, b) > -20 ? 4 : 0) + goalThreat));
       callAllies(w, a, b);
       coalitionResponse(w, a, b);
     }
@@ -572,6 +574,8 @@ G.engine = (function () {
     G.military.losses(b, U.clamp(0.12 * pa / tot, 0.01, 0.25));
     w.score = U.clamp(w.score + ((pa - pb) / tot) * 35 + U.randInt(-6, 6), -100, 100);
     a.pop *= 0.999; b.pop *= 0.999;
+    // The front line moves with the war score: provinces along the border are occupied.
+    if (G.war) G.war.front(w);
     var superWar = a.gdp > 8000 && b.gdp > 8000;
     S().earth = U.clamp(S().earth - (superWar ? 0.8 : 0.2), 0, 100);
 
@@ -585,10 +589,12 @@ G.engine = (function () {
       if ((Math.abs(w.score) > 40 && U.chance(0.15)) || (years > 6 && U.chance(0.12))) {
         if (w.independence) return resolveIndependence(w, w.score > -10);
         var winner = w.score >= 0 ? a : b, loser = w.score >= 0 ? b : a;
-        cede(winner, loser, Math.abs(w.score) / 100 * 0.12);
+        // The winner keeps what its armies hold (or a slice of land if the front never moved).
+        var held = G.war ? G.war.occupiedBy(w, winner) : [];
+        if (held.length) transferProvinces(winner, loser, held); else cede(winner, loser, Math.abs(w.score) / 100 * 0.12);
         endWar(w, '🕊️ ' + loser.name + ' sues for peace with ' + winner.name + ' and cedes territory.');
       }
-    }
+    } else if (G.war) G.war.playerWarYear(w);
   }
 
   function cede(winner, loser, frac) {
@@ -625,9 +631,48 @@ G.engine = (function () {
       annex(winner, loser);
       endWar(w, '🏳️ ' + loser.name + ' has fallen. It is annexed by ' + winner.name + '.');
     } else {
-      cede(winner, loser, 0.25);
-      endWar(w, '🏳️ ' + loser.name + ' capitulates to ' + winner.name + ', ceding a quarter of its territory.');
+      var held = G.war ? G.war.occupiedBy(w, winner) : [];
+      if (held.length) transferProvinces(winner, loser, held);
+      cede(winner, loser, held.length ? 0.1 : 0.25);
+      endWar(w, '🏳️ ' + loser.name + ' capitulates to ' + winner.name + ' and gives up the land its armies hold' + (held.length ? ' and more' : '') + '.');
     }
+  }
+
+  // Hand specific provinces from loser to winner; people and economy follow the land.
+  function transferProvinces(winner, loser, list) {
+    var share = G.territory.shareOf(list, loser.id);
+    if (!share) return 0;
+    var frac = U.clamp(share, 0.005, 0.6);
+    addThreat(winner, 4 + frac * 40);
+    var dp = loser.pop * frac, dg = loser.gdp * frac;
+    loser.pop -= dp; loser.gdp -= dg;
+    winner.pop += dp * 0.9; winner.gdp += dg * (ownedByPlayer(winner) ? diff().annex : 0.7);
+    G.military.transfer(loser, winner, frac * 0.3);
+    addMod(winner, 'approval', 5, 3);
+    addMod(loser, 'approval', -8, 3); addMod(loser, 'stability', -6, 3);
+    G.territory.transfer(list, winner.id);
+    syncBorders(winner);
+    return list.length;
+  }
+
+  // A conquered nation is freed peacefully (e.g. by a peace treaty): it gets its homeland back.
+  function liberate(d, owner) {
+    if (d.alive || d.annexedBy !== owner.id) return false;
+    var before = G.territory.homeShare(d.id);
+    G.territory.restore(d.id, owner.id);
+    var share = G.territory.homeShare(d.id) - before;
+    var growthSince = d.gdpAtAnnex ? U.clamp(owner.gdp / d.ownerGdpAtAnnex, 0.5, 20) : 1;
+    var home = { pop: d.popAtAnnex || d.pop, gdp: (d.gdpAtAnnex || d.gdp) * growthSince };
+    d.alive = true; d.annexedBy = null; d.occ = null; d.born = S().year;
+    d.pop = Math.min(owner.pop * 0.4, home.pop * Math.max(share, 0.05)); d.gdp = Math.min(owner.gdp * 0.4, home.gdp * Math.max(share, 0.05) * 0.7);
+    owner.pop -= d.pop; owner.gdp -= d.gdp;
+    d.treasury = 0; d.stability = 40; d.approval = 70; d.warYears = 0; d.mods = [];
+    syncSpend(d);
+    G.military.init(d, funds(d).mil, 0.4);
+    d.leader = makeLeader(d);
+    changeRel(d, owner, -40);
+    syncBorders(d);
+    return true;
   }
 
   function annex(winner, loser) {
@@ -1073,7 +1118,7 @@ G.engine = (function () {
     milestoneIndex: milestoneIndex, spaceRate: spaceRate, sat: sat, DIFFICULTY: DIFFICULTY, diff: diff, threatLevel: threatLevel, addThreat: addThreat, growthParts: growthParts, ceilingPc: ceilingPc, earthFactor: earthFactor,
     allies: allies, allied: allied, allianceType: allianceType, joinChance: joinChance, occupiedBy: occupiedBy, occupation: occupation, resolveIndependence: resolveIndependence, formAlliance: formAlliance, breakAlliance: breakAlliance, blocPower: blocPower, relation: relation, changeRel: changeRel, wars: wars, warsOf: warsOf, atWar: atWar,
     warBetween: warBetween, enemiesOf: enemiesOf, hasPact: hasPact, addPact: addPact, canReach: canReach, rank: rank,
-    declareWar: declareWar, endWar: endWar, cede: cede, capitulate: capitulate, addMod: addMod, becomeLeader: becomeLeader,
+    declareWar: declareWar, endWar: endWar, cede: cede, capitulate: capitulate, annex: annex, transferProvinces: transferProvinces, liberate: liberate, syncBorders: syncBorders, addMod: addMod, becomeLeader: becomeLeader,
     killPlayer: killPlayer, successorOptions: successorOptions, applySuccessor: applySuccessor,
     continueAfterLoss: continueAfterLoss, mortality: mortality, makeLeader: makeLeader, worldPop: worldPop
   };

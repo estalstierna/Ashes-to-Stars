@@ -49,7 +49,20 @@
       // Outer border only: the edge filter keeps a thin band along the outside of the owner's whole area.
       lines += '<g filter="url(#map-edge)" opacity="' + (o === me ? 0.95 : war ? 0.9 : 0.7) + '"><path d="' + d + '" fill="' + stroke + '" stroke="' + stroke + '" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></g>';
     });
-    regions = '<g opacity="' + op + '">' + fills + '</g><g pointer-events="none">' + lines + '</g>';
+    // Front lines: provinces occupied in ongoing wars, striped in the occupier's colour.
+    var occ = '', pats = {};
+    (s.wars || []).forEach(function (w) {
+      [['occA', w.a], ['occB', w.b]].forEach(function (x) {
+        var list = w[x[0]] || [], o = E.nation(x[1]);
+        if (!list.length || !o) return;
+        pats[o.id] = o.color;
+        occ += '<path d="' + list.map(function (i) { return MAP.provinces[i].d; }).join('') + '" fill="url(#occ-' + o.id + ')" stroke="' + o.color + '" stroke-width="1" stroke-dasharray="2 2" vector-effect="non-scaling-stroke"/>';
+      });
+    });
+    var patDefs = Object.keys(pats).map(function (id) {
+      return '<pattern id="occ-' + id + '" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="6" fill="' + pats[id] + '" fill-opacity="0.75"/></pattern>';
+    }).join('');
+    regions = '<g opacity="' + op + '">' + fills + '</g><g pointer-events="none">' + lines + '</g>' + (occ ? '<defs>' + patDefs + '</defs><g pointer-events="none">' + occ + '</g>' : '');
     // Label priority: you first, then by GDP (used to hide overlapping labels).
     E.alive().slice().sort(function (a, b) { return (b === me) - (a === me) || b.gdp - a.gdp; }).forEach(function (n, pri) {
       var p = G.territory.center(n.id);

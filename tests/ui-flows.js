@@ -119,6 +119,38 @@ async function endTurn(page) {
     check(errors.length === 0, 'no page errors ' + errors.join('; '));
   }
 
+  console.log('War goals, front line and peace talks');
+  {
+    const { page, errors } = await newGame(browser, 'USA', 'leader');
+    await page.evaluate(() => { const E = G.engine; E.breakAlliance(E.pn(), E.nation('MESO')); E.pn().rel.MESO = -50; E.nation('MESO').rel.USA = -50; G.ui.render(); });
+    await page.click('[data-act=tab][data-arg=world]');
+    await page.click('[data-act=nation][data-arg=MESO]');
+    await page.click('#modal [data-act=target][data-arg="war|MESO"]');
+    check(await page.$('#modal [data-act=wargoal][data-arg="MESO|conquer"]'), 'war goal picker opens');
+    await page.click('#modal [data-act=wargoal][data-arg="MESO|conquer"]');
+    await clearModals(page);
+    const goal = await page.evaluate(() => G.engine.warBetween(G.engine.pn(), G.engine.nation('MESO')).goal);
+    check(goal === 'conquer', 'war has the chosen goal');
+    // Let the war run until our armies hold some provinces.
+    await page.evaluate(() => { const w = G.engine.warBetween(G.engine.pn(), G.engine.nation('MESO')); w.score = 60; for (let i = 0; i < 4; i++) G.war.front(w); G.ui.render(); });
+    const held = await page.evaluate(() => G.war.occupiedBy(G.engine.warBetween(G.engine.pn(), G.engine.nation('MESO')), G.engine.pn()).length);
+    check(held > 0, 'front line advances: we occupy ' + held + ' provinces');
+    await page.click('[data-act=tab][data-arg=world]');
+    check(await page.$('#world-map pattern[id="occ-USA"]'), 'occupied provinces are striped on the map');
+    await page.screenshot({ path: '/tmp/war-front.png' });
+    await page.click('[data-act=tab][data-arg=mil]');
+    await page.click('[data-act=target][data-arg="peace|MESO"]');
+    check(await page.$('#modal [data-act=negterm][data-arg=occupied]'), 'peace talks offer the occupied provinces');
+    await page.click('#modal [data-act=negterm][data-arg=occupied]');
+    const before = await page.evaluate(() => G.territory.owned('USA').length);
+    await page.evaluate(() => { const w = G.engine.warBetween(G.engine.pn(), G.engine.nation('MESO')); w.score = 100; w.start -= 20; });
+    await page.click('#modal [data-act=negterm][data-arg=occupied]'); await page.click('#modal [data-act=negterm][data-arg=occupied]'); // re-render with new score
+    await page.click('#modal [data-act=negpropose]');
+    const after = await page.evaluate(() => ({ owned: G.territory.owned('USA').length, war: !!G.engine.warBetween(G.engine.pn(), G.engine.nation('MESO')) }));
+    check(!after.war && after.owned > before, 'peace accepted: provinces change hands (' + before + ' → ' + after.owned + ')');
+    check(errors.length === 0, 'no page errors ' + errors.join('; '));
+  }
+
   console.log('Economy charts and budget');
   {
     const { page, errors } = await newGame(browser, 'USA', 'leader');

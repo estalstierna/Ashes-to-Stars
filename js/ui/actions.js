@@ -58,7 +58,60 @@
     }
     doAction(id);
   });
-  on('target', function (arg) { var parts = arg.split('|'); closeModal(); doAction(parts[0], parts[1]); });
+  on('target', function (arg) {
+    var parts = arg.split('|'); closeModal();
+    if (parts[0] === 'war') return goalPicker(parts[1]);
+    if (parts[0] === 'peace') { var w = E.warBetween(E.pn(), E.nation(parts[1])); if (w && !w.independence) return negotiation(parts[1]); }
+    doAction(parts[0], parts[1]);
+  });
+
+  // ---------- war goals ----------
+  function goalPicker(targetId) {
+    var n = E.pn(), t = E.nation(targetId), W = G.war;
+    var html = '<div class="kicker">Declare war on ' + esc(t.name) + '</div><h2>Choose your war goal</h2>' +
+      '<p class="small muted">Your goal decides how the world reacts. Your power ' + U.num(E.power(n)) + ' vs their ' + U.num(E.power(t, true)) +
+      (E.allies(t).length ? ' (their allies: ' + E.allies(t).map(function (x) { return esc(x.short); }).join(', ') + ')' : '') + '.</p>';
+    W.goalsAgainst(n, t).forEach(function (g) {
+      var G0 = W.GOALS[g], th = G0.threat;
+      var extra = g === 'liberate' ? ' (' + E.occupiedBy(t).map(function (d) { return esc(d.short); }).join(', ') + ')' : '';
+      html += '<button class="choice" data-act="wargoal" data-arg="' + targetId + '|' + g + '"><div class="t">' + G0.icon + ' ' + esc(G0.name) + extra + '</div>' +
+        '<div class="d">' + esc(G0.desc) + ' <span class="' + (th > 0 ? 'bad' : th < 0 ? 'good' : '') + '">' + (th > 0 ? 'More' : th < 0 ? 'Less' : 'Normal') + ' threat.</span></div></button>';
+    });
+    modal(html + '<button class="btn" data-act="close">Cancel</button>');
+  }
+  on('wargoal', function (arg) { closeModal(); doAction('war', arg); });
+
+  // ---------- peace negotiation ----------
+  var negState = null;
+  function negotiation(targetId) {
+    var n = E.pn(), t = E.nation(targetId), w = E.warBetween(n, t);
+    if (!negState || negState.target !== targetId) negState = { target: targetId, chosen: {} };
+    var terms = G.war.terms(w, n), chosen = Object.keys(negState.chosen).filter(function (k) { return negState.chosen[k]; });
+    var acc = G.war.acceptance(w, n, chosen), sc = G.war.score(w, n);
+    var html = '<div class="kicker">Peace talks with ' + esc(t.name) + '</div><h2>Your terms</h2>' +
+      '<div class="small muted" style="margin-bottom:8px">War score <b class="' + (sc >= 0 ? 'good' : 'bad') + '">' + Math.round(sc) + '</b> · goal: ' + esc(G.war.GOALS[w.goal || 'conquer'].name) +
+      ' · you occupy ' + G.war.occupiedBy(w, n).length + ' provinces, they occupy ' + G.war.occupiedBy(w, t).length + '.</div>';
+    terms.forEach(function (x) {
+      var on = !!negState.chosen[x.id];
+      html += '<button class="choice' + (on ? ' sel' : '') + '" data-act="negterm" data-arg="' + x.id + '"><div class="row"><div class="t">' + (on ? '☑ ' : '☐ ') + esc(x.name) + '</div>' +
+        '<span class="small ' + (x.price < 0 ? 'good' : 'muted') + '">' + (x.price < 0 ? '−' + (-x.price) : x.price) + '</span></div><div class="d">' + esc(x.desc) + '</div></button>';
+    });
+    var pct = Math.round(acc.chance * 100);
+    html += '<div class="row" style="margin-top:6px"><span class="small">' + (chosen.length ? 'Total price ' + acc.price : 'White peace (no terms)') + '</span><b class="' + (pct >= 60 ? 'good' : pct >= 35 ? 'warn' : 'bad') + '">' + pct + '% likely</b></div>' + bar(pct) +
+      '<button class="btn primary" data-act="negpropose">Propose peace</button><button class="btn" data-act="close">Cancel</button>';
+    modal(html);
+  }
+  on('negterm', function (id) {
+    negState.chosen[id] = !negState.chosen[id];
+    // Annexing makes other land terms pointless.
+    if (id === 'annex' && negState.chosen.annex) negState.chosen.occupied = false;
+    negotiation(negState.target);
+  });
+  on('negpropose', function () {
+    var st = negState, chosen = Object.keys(st.chosen).filter(function (k) { return st.chosen[k]; });
+    negState = null; closeModal();
+    doAction('peace', st.target + '|' + chosen.join(','));
+  });
 
   function doAction(id, target) {
     var res = A.perform(id, target);

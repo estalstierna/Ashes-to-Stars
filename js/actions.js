@@ -78,12 +78,13 @@ G.actions = (function () {
       desc: 'Buy equipment off the shelf for every branch. Equipment +10%.',
       run: function () { G.military.scale(N(), 1.1); return 'New weapon systems roll off the production lines.'; } },
     { id: 'war', cat: 'Military', role: 'leader', name: 'Declare war', cost: 0.01, target: 'reachable',
-      desc: 'Attack another nation. Win and you take territory, or conquer them entirely if they are small.',
-      run: function (id) {
-        var t = E.nation(id), n = N();
-        E.declareWar(n, t);
-        E.addMod(n, 'approval', E.relation(n, t) < -40 ? 5 : -8, 2);
-        return 'War! Your forces cross into ' + t.name + '.';
+      desc: 'Attack another nation with a war goal: conquer land, demand reparations, change their regime, annex them or liberate a nation they occupy.',
+      run: function (arg) {
+        var parts = String(arg).split('|'), t = E.nation(parts[0]), n = N(), goal = parts[1] || 'conquer';
+        E.declareWar(n, t, { goal: goal });
+        // Liberation wars are popular; wars of conquest less so.
+        E.addMod(n, 'approval', goal === 'liberate' ? 6 : E.relation(n, t) < -40 ? 5 : -8, 2);
+        return 'War! Goal: ' + G.war.GOALS[goal].name + '. Your forces cross into ' + t.name + '.';
       } },
     { id: 'offensive', cat: 'Military', role: 'leader', name: 'Major offensive', cost: 0.015, target: 'enemy',
       desc: 'Throw everything into a decisive push. Big swing in the war, heavy losses.',
@@ -100,9 +101,14 @@ G.actions = (function () {
         return swing > 0 ? 'The offensive gains ground. War score: ' + Math.round(mine) + '.' : 'The offensive stalls in blood and mud. War score: ' + Math.round(mine) + '.';
       } },
     { id: 'peace', cat: 'Military', role: 'leader', name: 'Propose peace', cost: 0, target: 'enemy',
-      desc: 'Negotiate an end to the war. They are more willing if they are losing.',
-      run: function (id) {
+      desc: 'Negotiate an end to the war: choose your terms. They accept more readily the better the war goes for you.',
+      run: function (arg) {
+        var parts = String(arg).split('|'), id = parts[0];
         var n = N(), t = E.nation(id), w = E.warBetween(n, t);
+        if (!w.independence) {
+          var chosen = parts[1] ? parts[1].split(',').filter(Boolean) : [];
+          return G.war.propose(w, n, chosen).text;
+        }
         var mine = w.a === n.id ? w.score : -w.score;
         var years = S().year - w.start;
         var p = U.clamp(0.25 + mine / 120 + years * 0.04, 0.05, 0.95);
@@ -113,13 +119,7 @@ G.actions = (function () {
           E.resolveIndependence(w, rebelsScore >= -25);
           return rebelsScore >= -25 ? 'You recognise the independence of ' + t.name + '.' : 'The rebels lay down their arms.';
         }
-        if (U.chance(p)) {
-          if (mine > 25) { E.cede(n, t, mine / 100 * 0.15); E.endWar(w, '🕊️ ' + t.name + ' accepts peace and cedes territory to ' + n.name + '.'); return 'Peace with victory. Territory is yours.'; }
-          if (mine < -25) { E.cede(t, n, -mine / 100 * 0.15); E.endWar(w, '🕊️ ' + n.name + ' buys peace from ' + t.name + ' by ceding territory.'); return 'Peace, but you had to give up land.'; }
-          E.endWar(w, '🕊️ ' + n.name + ' and ' + t.name + ' sign a white peace.');
-          return 'The guns fall silent. Status quo restored.';
-        }
-        return t.name + ' rejects your offer. The war goes on.';
+        return '';
       } },
 
     // ----- Leader: Economy -----
