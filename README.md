@@ -14,7 +14,7 @@ A text-based grand strategy RPG for mobile browsers.
   - **Corporate Executive**: buy the state.
 - **Politics:** elections, coups, government changes, approval and stability.
 - **Military:** wars with war scores, offensives, peace deals, territory changes, annexations and rebellions.
-- **Economy:** a 5-way budget (military, economy, welfare, science, space), taxes, trade agreements and Earth restoration.
+- **Economy:** set taxes and spending per sector (military, economy, welfare, science, space) and see your surplus or deficit live. Deficits become national debt, with interest that rises as debt grows. Also trade agreements and Earth restoration.
 - **Space race:** 12 milestones, from Lunar Outpost to Mars, the asteroid belt, Titan, a Dyson swarm, exoplanet colonies and Kardashev II.
 - **Characters age and die.** When yours dies, loses an election or is overthrown, you continue as an heir or protégé.
 - **Turn length grows with time:** 1 year per turn until 2150, then 5 years, then 10, then 25.

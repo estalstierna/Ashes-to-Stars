@@ -46,12 +46,31 @@ G.engine = (function () {
     var a = n.alloc, t = a.mil + a.econ + a.welfare + a.sci + a.space || 1;
     return { mil: a.mil / t, econ: a.econ / t, welfare: a.welfare / t, sci: a.sci / t, space: a.space / t };
   }
+  var SECTORS = ['mil', 'econ', 'welfare', 'sci', 'space'];
   function revenue(n) { return n.gdp * n.tax; }
-  // 80% of revenue is spent according to the budget, 20% goes to the treasury.
-  function funds(n) {
-    var sh = allocShares(n), spend = revenue(n) * 0.8;
-    return { mil: spend * sh.mil, econ: spend * sh.econ, welfare: spend * sh.welfare, sci: spend * sh.sci, space: spend * sh.space };
+  // Spending per sector is stored as a fraction of GDP (n.spend).
+  // AI governments derive it from their budget weights, spending 80% of revenue.
+  function syncSpend(n) {
+    var sh = allocShares(n), total = n.tax * 0.8;
+    n.spend = {};
+    SECTORS.forEach(function (k) { n.spend[k] = total * sh[k]; });
   }
+  function funds(n) {
+    if (!n.spend) syncSpend(n);
+    var out = {};
+    SECTORS.forEach(function (k) { out[k] = n.spend[k] * n.gdp; });
+    return out;
+  }
+  function spending(n) { var f = funds(n); return SECTORS.reduce(function (a, k) { return a + f[k]; }, 0); }
+  function debt(n) { return Math.max(0, -n.treasury); }
+  function debtRatio(n) { return debt(n) / n.gdp; }
+  // Interest rises as debt grows: lenders get nervous above 60% of GDP.
+  function interestRate(n) { return Math.min(0.15, 0.03 + Math.max(0, debtRatio(n) - 0.6) * 0.06); }
+  function interest(n) { return debt(n) * interestRate(n); }
+  // Yearly balance: positive = surplus, negative = deficit.
+  function balance(n) { return revenue(n) - spending(n) - interest(n); }
+  // How far a government can borrow for actions.
+  function borrowLimit(n) { return n.gdp * 1.2; }
   function power(n) { return n.army * (1 + n.tech / 50); }
   function milestoneIndex(n) {
     var ms = D.milestones, i = 0;
@@ -194,6 +213,8 @@ G.engine = (function () {
     // Economy: logistic catch-up towards the tech ceiling + investment.
     var growth = 0.05 * (1 - pc / ceil) + econR * 0.5 + modSum(n, 'growth');
     if (war) growth -= 0.025;
+    // Heavy debt crowds out investment.
+    growth -= Math.max(0, debtRatio(n) - 0.9) * 0.02;
     if (n.stability < 30) growth -= (30 - n.stability) * 0.001;
     growth = U.clamp(growth, -0.15, 0.12);
     n.growth = growth;
@@ -219,8 +240,9 @@ G.engine = (function () {
     // Military.
     n.army = Math.max(1, n.army * (1 - ARMY_DECAY) + f.mil);
 
-    // Treasury.
-    n.treasury += revenue(n) * 0.2;
+    // Treasury: surplus is saved, deficits become national debt.
+    n.treasury += balance(n);
+    var dr = debtRatio(n);
 
     // Approval and stability.
     var apT = 50 + (growth - 0.02) * 400 + welR * 250 - n.warYears * 2 - (n.tax - 0.2) * 120 + modSum(n, 'approval');
@@ -230,7 +252,7 @@ G.engine = (function () {
     // Empires are hard to hold: each conquered nation weighs on stability.
     var held = 0, all = S().nations;
     for (var hid in all) if (!all[hid].alive && all[hid].annexedBy === n.id) held++;
-    var stT = 28 + n.approval * 0.5 + g.stab - held * 4 - (war ? 6 : 0) + modSum(n, 'stability') + (n.gov === 'junta' ? milR * 200 : 0);
+    var stT = 28 + n.approval * 0.5 + g.stab - held * 4 - Math.max(0, dr - 0.9) * 15 - (war ? 6 : 0) + modSum(n, 'stability') + (n.gov === 'junta' ? milR * 200 : 0);
     stT = U.clamp(stT, 5, 98);
     n.stability = U.clamp(n.stability + (stT - n.stability) * 0.2, 0, 100);
     if (war) n.warYears++; else n.warYears = Math.max(0, n.warYears - 2);
@@ -275,9 +297,10 @@ G.engine = (function () {
     // As the centuries pass, AI nations invest more in space.
     var spaceTilt = Math.min(2, 1 + (S().year - 2077) / 300);
     target = Object.assign({}, target, { space: target.space * spaceTilt });
-    ['mil', 'econ', 'welfare', 'sci', 'space'].forEach(function (k) { a[k] += (target[k] - a[k]) * 0.3; });
+    SECTORS.forEach(function (k) { a[k] += (target[k] - a[k]) * 0.3; });
     if (n.approval < 30) n.tax = Math.max(0.12, n.tax - 0.005);
     if (n.treasury < 0) n.tax = Math.min(0.35, n.tax + 0.01);
+    syncSpend(n);
   }
 
   // ---------- wars ----------
@@ -483,7 +506,9 @@ G.engine = (function () {
           p.role = 'politician';
           p.candidate = false;
           n.leader = makeLeader(n);
-          n.alloc = JSON.parse(JSON.stringify(D.nations.filter(function (d) { return d.id === n.id; })[0] ? D.nations.filter(function (d) { return d.id === n.id; })[0].alloc : n.alloc));
+          var base = D.nations.filter(function (d) { return d.id === n.id; })[0];
+          if (base) n.alloc = JSON.parse(JSON.stringify(base.alloc));
+          syncSpend(n);
           s.succession = { reason: 'election', text: 'You lost the election. You can fight on as leader of the opposition, or hand your legacy to an heir.' };
         }
       } else if (p.candidate) {
@@ -622,7 +647,7 @@ G.engine = (function () {
 
   function snapshot() {
     var n = pn(), p = S().player;
-    return { year: S().year, gdp: n.gdp, pop: n.pop, army: n.army, approval: n.approval, stability: n.stability,
+    return { year: S().year, treasury: n.treasury, gdp: n.gdp, pop: n.pop, army: n.army, approval: n.approval, stability: n.stability,
       tech: n.tech, space: n.space, influence: p.influence, popularity: p.popularity, wealth: p.wealth, nation: n.id };
   }
 
@@ -656,6 +681,8 @@ G.engine = (function () {
       var st = JSON.parse(raw);
       if (st.version !== SAVE_VERSION) return false;
       G.state = st;
+      // Older saves: derive per-sector spending from budget weights.
+      for (var id in st.nations) if (!st.nations[id].spend) syncSpend(st.nations[id]);
       return true;
     } catch (e) { return false; }
   }
@@ -666,6 +693,8 @@ G.engine = (function () {
     newGame: newGame, endTurn: endTurn, save: save, load: load, hasSave: hasSave, wipe: wipe,
     nation: nation, alive: alive, pn: pn, isLeader: isLeader, gov: gov, title: title, roleTitle: roleTitle, log: log,
     yearsPerTurn: yearsPerTurn, era: era, allocShares: allocShares, revenue: revenue, funds: funds, power: power,
+    SECTORS: SECTORS, syncSpend: syncSpend, spending: spending, debt: debt, debtRatio: debtRatio, interestRate: interestRate,
+    interest: interest, balance: balance, borrowLimit: borrowLimit,
     milestoneIndex: milestoneIndex, spaceRate: spaceRate, relation: relation, changeRel: changeRel, wars: wars, warsOf: warsOf, atWar: atWar,
     warBetween: warBetween, enemiesOf: enemiesOf, hasPact: hasPact, addPact: addPact, canReach: canReach, rank: rank,
     declareWar: declareWar, endWar: endWar, cede: cede, capitulate: capitulate, addMod: addMod, becomeLeader: becomeLeader,

@@ -68,7 +68,7 @@ G.ui = (function () {
   on('howto', function () {
     modal('<div class="kicker">How to play</div><h2>Ashes to Stars</h2>' +
       '<p>Every turn you get <b>2 actions</b>. Then press <b>End Turn</b> and the world moves forward: economies grow, wars rage, elections are held and rivals plot.</p>' +
-      '<p><b>Heads of State</b> control the budget, wage wars, sign treaties and run the space programme using the national treasury.</p>' +
+      '<p><b>Heads of State</b> set taxes and spending, wage wars, sign treaties and run the space programme. Spend more than you earn and the deficit becomes <b>national debt</b>. Debt costs interest, and too much of it slows growth and destabilises the nation.</p>' +
       '<p><b>Politicians, Generals and Executives</b> spend their personal wealth to build influence and popularity, and must seize power through elections, coups or boardroom takeovers.</p>' +
       '<p>Your character ages and can die, lose elections or be overthrown. When that happens you continue as an <b>heir</b> or <b>protégé</b>. Your legacy lives on.</p>' +
       '<p>Turns are 1 year until 2150, then 5, 10 and finally 25 years. How far can you go? The year 3000? Kardashev II?</p>' +
@@ -192,7 +192,7 @@ G.ui = (function () {
       stat('Population', U.people(n.pop)) +
       stat('GDP ' + rankStr(E.rank(n, function (x) { return x.gdp; })), U.money(n.gdp)) +
       stat('Growth', '<span class="' + ((n.growth || 0) >= 0 ? 'good' : 'bad') + '">' + U.pct(n.growth || 0) + '</span>') +
-      stat('Treasury', '<span class="' + (n.treasury >= 0 ? '' : 'bad') + '">' + U.money(n.treasury) + '</span>') +
+      treasuryStat(n) + balanceStat(n) +
       stat('Military ' + rankStr(E.rank(n, E.power)), U.num(E.power(n))) +
       stat('Tech ' + rankStr(E.rank(n, function (x) { return x.tech; })), n.tech.toFixed(1)) +
       '</div>' +
@@ -214,41 +214,78 @@ G.ui = (function () {
     return h;
   }
 
-  function budgetCard(n) {
-    var sh = E.allocShares(n), f = E.funds(n);
-    var keys = [['mil', '🎖️ Military'], ['econ', '🏗️ Economy'], ['welfare', '🏥 Welfare'], ['sci', '🔬 Science'], ['space', '🚀 Space']];
-    return '<div class="card"><h3>National budget</h3>' +
-      '<div class="slider-row"><div class="row"><span>Tax rate</span><b id="taxv">' + Math.round(n.tax * 100) + '%</b></div>' +
-      '<input type="range" min="8" max="45" value="' + Math.round(n.tax * 100) + '" data-input="tax"></div>' +
-      '<div class="small muted" style="margin-bottom:10px">Revenue <span id="revv">' + U.money(E.revenue(n)) + '</span>/yr · 80% spent below, 20% to the treasury. Higher taxes hurt approval.</div>' +
-      keys.map(function (k) {
-        return '<div class="slider-row"><div class="row"><span>' + k[1] + '</span><span><b id="al-' + k[0] + '">' + Math.round(sh[k[0]] * 100) + '%</b> <span class="muted small" id="af-' + k[0] + '">' + U.money(f[k[0]]) + '</span></span></div>' +
-          '<input type="range" min="0" max="60" value="' + Math.round(sh[k[0]] * 100) + '" data-input="alloc" data-k="' + k[0] + '"></div>';
-      }).join('') + '</div>';
+  var SECTOR_LABELS = { mil: '🎖️ Military', econ: '🏗️ Economy', welfare: '🏥 Welfare', sci: '🔬 Science', space: '🚀 Space' };
+
+  function treasuryStat(n) {
+    if (n.treasury >= 0) return stat('Treasury', U.money(n.treasury));
+    return stat('National debt', '<span class="bad">' + U.money(E.debt(n)) + '</span> <span class="small muted">' + Math.round(E.debtRatio(n) * 100) + '%</span>');
   }
+  function balanceStat(n) {
+    var b = E.balance(n);
+    return stat('Budget / yr', '<span class="' + (b >= 0 ? 'good' : 'bad') + '">' + (b >= 0 ? '+' : '−') + U.money(Math.abs(b)) + '</span>');
+  }
+
+  function budgetCard(n) {
+    var f = E.funds(n);
+    return '<div class="card"><h3>National budget (per year)</h3>' +
+      '<div class="slider-row"><div class="row"><span>💰 Tax rate <b id="taxv">' + Math.round(n.tax * 100) + '%</b></span><span class="good" id="revv">+' + U.money(E.revenue(n)) + '</span></div>' +
+      '<input type="range" min="8" max="45" value="' + Math.round(n.tax * 100) + '" data-input="tax"></div>' +
+      '<div class="small muted" style="margin:-2px 0 12px">Higher taxes bring in more money but hurt approval.</div>' +
+      '<h3 style="margin-top:6px">Expenses <span class="small" style="text-transform:none;letter-spacing:0">(% of GDP)</span></h3>' +
+      E.SECTORS.map(function (k) {
+        return '<div class="slider-row"><div class="row"><span>' + SECTOR_LABELS[k] + ' <b id="sp-' + k + '">' + (n.spend[k] * 100).toFixed(1) + '%</b></span><span class="bad" id="sf-' + k + '">−' + U.money(f[k]) + '</span></div>' +
+          '<input type="range" min="0" max="15" step="0.1" value="' + (n.spend[k] * 100).toFixed(1) + '" data-input="spend" data-k="' + k + '"></div>';
+      }).join('') +
+      '<div id="budget-sum">' + budgetSummary(n) + '</div></div>';
+  }
+
+  function line(label, value, cls, bold) {
+    return '<div class="delta"' + (bold ? ' style="font-weight:700;font-size:15px"' : '') + '><span>' + label + '</span><span class="' + (cls || '') + '">' + value + '</span></div>';
+  }
+  function signedMoney(v) { return (v >= 0 ? '+' : '−') + U.money(Math.abs(v)); }
+
+  function budgetSummary(n) {
+    var rev = E.revenue(n), sp = E.spending(n), int = E.interest(n), bal = E.balance(n);
+    var next = n.treasury + bal, dr = E.debtRatio(n);
+    var h = '<div style="margin-top:8px">' +
+      line('Tax revenue', '+' + U.money(rev), 'good') +
+      line('Spending (' + (sp / n.gdp * 100).toFixed(1) + '% of GDP)', '−' + U.money(sp), 'bad') +
+      (int > 0 ? line('Interest on debt (' + (E.interestRate(n) * 100).toFixed(1) + '%)', '−' + U.money(int), 'bad') : '') +
+      line(bal >= 0 ? 'Surplus' : 'Deficit', signedMoney(bal) + ' <span class="small muted">(' + (bal / n.gdp * 100).toFixed(1) + '% of GDP)</span>', bal >= 0 ? 'good' : 'bad', true) +
+      '</div><div style="margin-top:10px">';
+    if (n.treasury >= 0) h += line('🏦 Treasury', U.money(n.treasury));
+    else h += line('📉 National debt', '<span class="bad">' + U.money(E.debt(n)) + '</span> <span class="small muted">(' + Math.round(dr * 100) + '% of GDP)</span>');
+    h += line('Next year', next >= 0 ? U.money(next) + ' in treasury' : '<span class="bad">' + U.money(-next) + ' debt</span>', '');
+    if (bal < 0 && n.treasury > 0) h += '<div class="small warn" style="margin-top:6px">At this rate the treasury runs dry in ' + Math.max(1, Math.ceil(n.treasury / -bal)) + ' year(s).</div>';
+    if (dr > 0.9) h += '<div class="small bad" style="margin-top:6px">⚠️ Debt above 90% of GDP slows growth, raises interest and destabilises the nation.</div>';
+    else if (dr > 0.6) h += '<div class="small warn" style="margin-top:6px">Debt above 60% of GDP makes lenders nervous: interest is rising.</div>';
+    h += '<div class="small muted" style="margin-top:6px">Actions can be paid with borrowed money, up to ' + Math.round(E.borrowLimit(n) / n.gdp * 100) + '% of GDP in debt.</div>';
+    return h + '</div>';
+  }
+
   on('tax', function (v) {
     var n = E.pn(); n.tax = v / 100;
-    $('taxv').textContent = v + '%'; $('revv').textContent = U.money(E.revenue(n));
+    $('taxv').textContent = v + '%'; $('revv').textContent = '+' + U.money(E.revenue(n));
     refreshBudget(); E.save();
   });
-  on('alloc', function (v, el) {
-    var n = E.pn(); n.alloc[el.getAttribute('data-k')] = +v;
+  on('spend', function (v, el) {
+    var n = E.pn(), k = el.getAttribute('data-k');
+    n.spend[k] = +v / 100;
+    $('sp-' + k).textContent = (+v).toFixed(1) + '%';
     refreshBudget(); E.save();
   });
   function refreshBudget() {
-    var n = E.pn(), sh = E.allocShares(n), f = E.funds(n);
-    ['mil', 'econ', 'welfare', 'sci', 'space'].forEach(function (k) {
-      var a = $('al-' + k), b = $('af-' + k);
-      if (a) a.textContent = Math.round(sh[k] * 100) + '%';
-      if (b) b.textContent = U.money(f[k]);
-    });
+    var n = E.pn(), f = E.funds(n);
+    E.SECTORS.forEach(function (k) { var b = $('sf-' + k); if (b) b.textContent = '−' + U.money(f[k]); });
+    var sum = $('budget-sum'); if (sum) sum.innerHTML = budgetSummary(n);
   }
 
   function actTab() {
     var s = S(), p = s.player, n = E.pn(), list = A.available();
     var cats = {};
     list.forEach(function (a) { (cats[a.cat] = cats[a.cat] || []).push(a); });
-    var funds = E.isLeader() ? 'Treasury: <b>' + U.money(n.treasury) + '</b>' : 'Your wealth: <b>' + wealthStr(p.wealth) + '</b>';
+    var funds = !E.isLeader() ? 'Your wealth: <b>' + wealthStr(p.wealth) + '</b>' :
+      n.treasury >= 0 ? 'Treasury: <b>' + U.money(n.treasury) + '</b>' : 'Debt: <b class="bad">' + U.money(E.debt(n)) + '</b>';
     var h = '<div class="card row"><div><b>' + s.ap + '</b> action' + (s.ap === 1 ? '' : 's') + ' left this turn</div><div class="small">' + funds + '</div></div>';
     if (!E.isLeader()) h += '<div class="card small muted">' + roleHint() + '</div>';
     Object.keys(cats).forEach(function (c) {
@@ -333,7 +370,8 @@ G.ui = (function () {
       '<p class="muted small">' + esc(n.desc) + '</p>' +
       '<div class="grid2">' + stat('Government', E.gov(n).name) + stat('Leader', n.leader ? esc(n.leader.name) : esc(S().player.name)) +
       stat('Population', U.people(n.pop)) + stat('GDP', U.money(n.gdp)) + stat('Military', U.num(E.power(n))) + stat('Tech', n.tech.toFixed(1)) +
-      stat('Stability', Math.round(n.stability)) + stat('Space', D.milestones[E.milestoneIndex(n)].name) + '</div>' +
+      stat('Stability', Math.round(n.stability)) + stat('Space', D.milestones[E.milestoneIndex(n)].name) +
+      treasuryStat(n) + stat('Tax rate', Math.round(n.tax * 100) + '%') + '</div>' +
       '<p class="small" style="margin-top:10px">' + (wars.length ? '⚔️ At war with ' + wars.join(', ') : 'At peace') + '</p>' +
       (pacts.length ? '<p class="small">🤝 ' + pacts.join(' · ') + '</p>' : '') +
       (!self ? '<p class="small">Relations with you: <b>' + Math.round(E.relation(me, n)) + '</b> · Neighbour: ' + (me.neighbors.indexOf(n.id) >= 0 ? 'yes' : 'no') + '</p>' : '');
@@ -419,6 +457,11 @@ G.ui = (function () {
         d('Military', f.army, n.army, function () { return U.num(E.power(n)); }, true) +
         d('Approval', f.approval, n.approval, Math.round) + d('Stability', f.stability, n.stability, Math.round) +
         d('Tech', f.tech, n.tech, function (v) { return v.toFixed(1); });
+      if (f.treasury !== undefined) {
+        var tdiff = n.treasury - f.treasury;
+        html += '<div class="delta"><span>' + (n.treasury >= 0 ? 'Treasury' : 'National debt') + '</span><span>' +
+          U.money(Math.abs(n.treasury)) + ' <span class="' + (tdiff >= 0 ? 'good' : 'bad') + '">' + signedMoney(tdiff) + '</span></span></div>';
+      }
     }
     html += d('Your influence', f.influence, p.influence, Math.round) + d('Your popularity', f.popularity, p.popularity, Math.round);
     var news = sm.news.filter(function (x) { return x.type !== 'world'; }).concat(sm.news.filter(function (x) { return x.type === 'world'; })).slice(0, 12);

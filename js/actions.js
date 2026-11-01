@@ -230,7 +230,7 @@ G.actions = (function () {
       } },
     { id: 'lobbymil', cat: 'Military', role: 'general', name: 'Lobby for the army', cost: 2,
       desc: 'Push the government to raise military spending. Military up, influence up.',
-      run: function () { var n = N(); n.alloc.mil *= 1.15; n.army *= 1.03; P().influence = U.clamp(P().influence + 3, 0, 100); return 'The budget committee bends to your will.'; } },
+      run: function () { var n = N(); n.alloc.mil *= 1.15; E.syncSpend(n); n.army *= 1.03; P().influence = U.clamp(P().influence + 3, 0, 100); return 'The budget committee bends to your will.'; } },
 
     // Corporate
     { id: 'expand', cat: 'Business', role: 'corporate', name: 'Expand the business', cost: 0,
@@ -283,7 +283,8 @@ G.actions = (function () {
 
   function affordable(a) {
     var c = costFor(a), p = P();
-    if (a.role === 'leader') return N().treasury >= c;
+    // Governments may borrow for actions, up to a debt limit.
+    if (a.role === 'leader') return c === 0 || N().treasury - c >= -E.borrowLimit(N());
     return p.wealth >= c;
   }
 
