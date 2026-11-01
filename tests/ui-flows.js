@@ -98,6 +98,27 @@ async function endTurn(page) {
     check(errors.length === 0, 'no page errors ' + errors.join('; '));
   }
 
+  console.log('Difficulty, threat and cooldowns');
+  {
+    const page = await (await browser.newContext({ ...devices['iPhone 13'] })).newPage();
+    const errors = []; page.on('pageerror', e => errors.push(e.message)); page.on('dialog', d => d.accept());
+    await page.goto(URL);
+    await page.click('[data-act=newgame]'); await page.click('[data-act=tocreate]');
+    await page.fill('#cname', 'Test Person'); await page.click('[data-act=pnation][data-arg=USA]'); await page.click('[data-act=prole][data-arg=leader]');
+    await page.click('[data-act=pdiff][data-arg=hard]');
+    await page.click('[data-act=start]');
+    await page.evaluate(() => { G.uiKit.closeModal(); G.state.event = null; G.ui.render(); });
+    check(await page.evaluate(() => G.state.difficulty) === 'hard', 'difficulty is stored');
+    check((await page.textContent('.page')).includes("World's fear of you"), 'home shows the world\'s fear');
+    const t = await page.evaluate(() => { const E = G.engine; const before = E.pn().threat || 0; E.declareWar(E.pn(), E.nation('MESO')); return [before, E.pn().threat]; });
+    check(t[1] > t[0], 'starting a war raises threat');
+    await page.click('[data-act=tab][data-arg=act]');
+    await page.click('[data-act=doaction][data-arg=infra]');
+    await page.evaluate(() => { G.state.ap = 2; G.state.used = []; G.ui.render(); });
+    check((await page.textContent('[data-act=doaction][data-arg=infra]')).includes('Ready in'), 'infrastructure goes on cooldown');
+    check(errors.length === 0, 'no page errors ' + errors.join('; '));
+  }
+
   console.log('Economy charts and budget');
   {
     const { page, errors } = await newGame(browser, 'USA', 'leader');

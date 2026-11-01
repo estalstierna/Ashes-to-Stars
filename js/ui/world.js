@@ -187,6 +187,17 @@
   function diplomacyView() {
     var me = E.pn(), s = S(), lead = E.isLeader(), h = '';
     var others = E.alive().filter(function (x) { return x !== me; });
+    // Threat / aggressive expansion
+    var th = me.threat || 0;
+    h += '<div class="card"><div class="row"><h3 style="margin:0">How the world sees you</h3><b class="' + (th >= 45 ? 'bad' : th >= 20 ? 'warn' : 'good') + '">' + E.threatLevel(me) + ' threat (' + Math.round(th) + ')</b></div>' + bar(Math.min(100, th), th >= 45 ? 'bad' : th >= 20 ? 'warn' : 'good') +
+      '<div class="small muted">Starting wars, taking land and annexing nations frighten the world. ' +
+      (th >= 45 ? '<span class="bad">Nations are forming defensive pacts against you, and some will join your victims in a coalition if you attack again.</span> ' : th >= 20 ? '<span class="warn">Relations with everyone are slowly souring.</span> ' : '') +
+      'Fear fades over time in peace.</div></div>';
+    var feared = others.filter(function (x) { return (x.threat || 0) >= 30; });
+    if (feared.length) h += '<div class="card"><h3>Feared aggressors</h3>' + feared.map(function (x) {
+      return '<div class="row small" style="padding:4px 0"><span><span class="dot" style="background:' + x.color + '"></span>' + esc(x.short) + '</span><span class="' + ((x.threat || 0) >= 45 ? 'bad' : 'warn') + '">' + E.threatLevel(x) + ' (' + Math.round(x.threat) + ')</span></div>';
+    }).join('') + '</div>';
+
     // Your treaties
     var mine = others.map(function (x) {
       var ps = s.pacts.filter(function (p) { return (p.a === me.id && p.b === x.id) || (p.b === me.id && p.a === x.id); });

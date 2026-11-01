@@ -37,6 +37,8 @@
       K.treasuryStat(n) + K.balanceStat(n) +
       stat('Military ' + rankStr(E.rank(n, E.power)), U.num(E.power(n))) +
       stat('Tech ' + rankStr(E.rank(n, function (x) { return x.tech; })), n.tech.toFixed(1)) +
+      stat('World\'s fear of you', '<span class="' + ((n.threat || 0) >= 45 ? 'bad' : (n.threat || 0) >= 20 ? 'warn' : 'good') + '">' + E.threatLevel(n) + '</span> <span class="small muted">' + Math.round(n.threat || 0) + '</span>') +
+      stat('Difficulty', E.diff().name) +
       '</div>' +
       '<div style="margin-top:10px"><div class="row small"><span>Stability</span><span>' + Math.round(n.stability) + '</span></div>' + bar(n.stability) +
       '<div class="row small"><span>Government approval</span><span>' + Math.round(n.approval) + '</span></div>' + bar(n.approval) + '</div>' +

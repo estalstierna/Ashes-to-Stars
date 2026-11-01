@@ -6,6 +6,60 @@ G.engine = (function () {
   var SPACE_K = 22;
   var SAVE_VERSION = 1;
 
+  // ---------- difficulty ----------
+  // aiGrowth: extra growth for AI economies. cost: multiplier on your actions' cost.
+  // threat: how strongly the world reacts to your expansion. weariness: war weariness at home.
+  // unrest: unrest in lands you occupy. annex: share of a conquered economy you actually gain.
+  var DIFFICULTY = {
+    easy:   { name: 'Easy',   desc: 'A forgiving world. Expansion is easy and the AI is slow.', aiGrowth: 0, cost: 0.8, threat: 0.6, weariness: 1, unrest: 0.8, annex: 0.8 },
+    normal: { name: 'Normal', desc: 'The world pushes back when you grow too fast.', aiGrowth: 0.003, cost: 1, threat: 1, weariness: 1.5, unrest: 1, annex: 0.65 },
+    hard:   { name: 'Hard',   desc: 'Rivals grow faster, conquest is costly and coalitions form quickly.', aiGrowth: 0.006, cost: 1.25, threat: 1.4, weariness: 2, unrest: 1.25, annex: 0.55 },
+    brutal: { name: 'Brutal', desc: 'For veterans. Every war you start may turn the whole world against you.', aiGrowth: 0.01, cost: 1.5, threat: 1.8, weariness: 2.5, unrest: 1.5, annex: 0.45 }
+  };
+  function diff() { return DIFFICULTY[(S() && S().difficulty) || 'normal']; }
+  function ownedByPlayer(n) { return n && S().player && n.id === S().player.nation; }
+
+  // ---------- threat (aggressive expansion) ----------
+  // Starting wars, taking land and annexing nations make the world afraid of a nation.
+  function addThreat(n, amount) {
+    if (!n) return;
+    var k = ownedByPlayer(n) ? diff().threat : 0.8;
+    n.threat = U.clamp((n.threat || 0) + amount * k, 0, 150);
+  }
+  function threatLevel(n) {
+    var t = n.threat || 0;
+    return t < 20 ? 'Low' : t < 45 ? 'Elevated' : t < 75 ? 'High' : 'Extreme';
+  }
+  // Yearly: threat fades in peacetime; high threat sours relations and builds coalitions.
+  function threatYear() {
+    var ns = alive(), pid = S().player.nation;
+    ns.forEach(function (n) {
+      var t = n.threat || 0;
+      if (!t) return;
+      n.threat = Math.max(0, t * (atWar(n) ? 0.97 : 0.93) - 0.5);
+      if (t < 25) return;
+      ns.forEach(function (o) {
+        if (o === n || allied(o, n)) return;
+        // Everyone grows wary, neighbours most of all.
+        var near = n.neighbors.indexOf(o.id) >= 0 ? 1.5 : 1;
+        changeRelOneWay(o, n, -(t - 20) * 0.03 * near);
+      });
+      // Coalitions: nations afraid of the same aggressor sign defensive pacts with each other.
+      if (t >= 45 && U.chance(0.25)) {
+        var afraid = ns.filter(function (o) { return o !== n && !allied(o, n) && relation(o, n) < 0 && !(o.id === pid && isLeader()); });
+        if (afraid.length >= 2) {
+          var a = U.pick(afraid), b = U.pick(afraid.filter(function (x) { return x !== a && !allied(a, x) && !warBetween(a, x); }));
+          if (b) {
+            formAlliance(a, b, 'defensive');
+            changeRel(a, b, 10);
+            log('🛡️ Fearing ' + n.name + ', ' + a.name + ' and ' + b.name + ' sign a defensive pact.', n.id === pid ? 'player' : 'world');
+          }
+        }
+      }
+    });
+  }
+  function changeRelOneWay(a, b, d) { a.rel[b.id] = U.clamp((a.rel[b.id] || 0) + d, -100, 100); }
+
   // ---------- helpers ----------
   function S() { return G.state; }
   function nation(id) { return S().nations[id]; }
@@ -85,9 +139,12 @@ G.engine = (function () {
   // Space points per year: share of GDP spent on space, scaled sub-linearly by economy size and by tech.
   function spaceRate(n) {
     var f = funds(n);
-    return (f.space / n.gdp) * Math.pow(n.gdp, 0.3) * Math.pow(n.tech / 80, 0.8) * SPACE_K * (1 + G.research.bonus(n, 'space'));
+    return sat(f.space / n.gdp, 0.04) * 1.1 * Math.pow(n.gdp, 0.3) * Math.pow(n.tech / 80, 0.8) * SPACE_K * (1 + G.research.bonus(n, 'space'));
   }
   function worldPop() { return alive().reduce(function (a, n) { return a + n.pop; }, 0); }
+  // Diminishing returns: grows almost linearly for small x, then levels off at `cap`.
+  function sat(x, cap) { return cap * (1 - Math.exp(-Math.max(0, x) / cap)); }
+
   function modSum(n, type) {
     var y = S().year, v = 0;
     n.mods = n.mods.filter(function (m) { return m.until >= y; });
@@ -142,7 +199,8 @@ G.engine = (function () {
       rng: (Math.random() * 4294967296) >>> 0,
       year: 2077, turn: 1, earth: 42,
       nations: {}, wars: [], pacts: [], log: [], firsts: {}, achievements: [],
-      ap: 2, used: [], turnNews: [], event: null, summary: null, succession: null, over: false
+      ap: 2, used: [], turnNews: [], event: null, summary: null, succession: null, over: false,
+      difficulty: DIFFICULTY[opts.difficulty] ? opts.difficulty : 'normal'
     };
     var s = G.state;
     D.nations.forEach(function (d) {
@@ -225,7 +283,7 @@ G.engine = (function () {
 
     // Population with a soft global carrying capacity raised by space colonies.
     var cap = 9000 * earthFactor() + alive().reduce(function (a, x) { return a + Math.max(0, milestoneIndex(x) - 3) * 400; }, 0);
-    var popG = (0.004 + welR * 0.12 + modSum(n, 'pop') + G.research.bonus(n, 'pop')) * Math.max(-0.5, 1 - worldPop() / cap);
+    var popG = (0.004 + sat(welR, 0.05) * 0.14 + modSum(n, 'pop') + G.research.bonus(n, 'pop')) * Math.max(-0.5, 1 - worldPop() / cap);
     if (war) popG -= 0.004;
     n.pop = Math.max(0.5, n.pop * (1 + popG));
 
@@ -233,7 +291,7 @@ G.engine = (function () {
     var maxTech = Math.max.apply(null, alive().map(function (x) { return x.tech; }));
     // Diminishing returns: each new tech level is harder to reach.
     var techDamp = 100 / (100 + Math.max(0, n.tech - 80) * 0.6);
-    n.tech += sciR * 35 * g.sci * techDamp + (maxTech - n.tech) * 0.01 + modSum(n, 'tech');
+    n.tech += sat(sciR, 0.04) * 45 * g.sci * techDamp + (maxTech - n.tech) * 0.01 + modSum(n, 'tech');
     // Research points go into discoveries (the player picks them when ruling).
     G.research.simulate(n, !(isPlayerNation && isLeader()));
 
@@ -250,7 +308,7 @@ G.engine = (function () {
     var dr = debtRatio(n);
 
     // Approval and stability.
-    var apT = 50 + (growth - 0.02) * 400 + welR * 250 - n.warYears * 2 - (n.tax - 0.2) * 120 + modSum(n, 'approval') - G.military.conscApprovalPenalty(n) + G.research.bonus(n, 'approval');
+    var apT = 50 + (growth - 0.02) * 400 + sat(welR, 0.05) * 320 - n.warYears * 2 * (ownedByPlayer(n) ? diff().weariness : 1) - (n.tax - 0.2) * 120 + modSum(n, 'approval') - G.military.conscApprovalPenalty(n) + G.research.bonus(n, 'approval');
     if (n.gov === 'junta') apT += milR * 150;
     apT = U.clamp(apT, 5, 95);
     n.approval = U.clamp(n.approval + (apT - n.approval) * 0.25, 0, 100);
@@ -298,16 +356,18 @@ G.engine = (function () {
     var f = funds(n), pc = n.gdp / n.pop, ceil = ceilingPc(n);
     var parts = [
       ['Catching up to potential', 0.05 * (1 - pc / ceil)],
-      ['Economy budget (investment)', f.econ / n.gdp * 0.5],
+      ['Economy budget (investment)', sat(f.econ / n.gdp, 0.06) * 0.6],
       ['Technology (discoveries)', G.research.bonus(n, 'growth')],
-      ['Projects, trade & events', modSum(n, 'growth')],
+      ['Rival momentum (difficulty)', ownedByPlayer(n) ? 0 : diff().aiGrowth],
+      // Bonuses from actions, trade and events stack, but only up to +3%.
+      ['Projects, trade & events', Math.min(0.03, modSum(n, 'growth'))],
       ['War', atWar(n) ? -0.025 : 0],
       ['Conscription (lost workforce)', -G.military.conscGrowthPenalty(n)],
       ['National debt', -Math.max(0, debtRatio(n) - 0.9) * 0.02],
       ['Instability', n.stability < 30 ? -(30 - n.stability) * 0.001 : 0]
     ];
     var raw = parts.reduce(function (a, p) { return a + p[1]; }, 0);
-    return { parts: parts, raw: raw, total: U.clamp(raw, -0.15, 0.12), pc: pc, ceiling: ceil };
+    return { parts: parts, raw: raw, total: U.clamp(raw, -0.15, 0.08), pc: pc, ceiling: ceil };
   }
 
   // ---------- treaties & alliances ----------
@@ -386,6 +446,25 @@ G.engine = (function () {
     });
   }
 
+  // A feared aggressor may face a coalition: nations that fear it join the victim even
+  // without a treaty, if they can reach the aggressor and together stand a chance.
+  function coalitionResponse(w, attacker, defender) {
+    var t = attacker.threat || 0, pid = S().player.nation;
+    if (t < 40) return;
+    var joined = [];
+    alive().forEach(function (o) {
+      if (o === attacker || o === defender || warBetween(o, attacker) || allied(o, attacker) || (o.id === pid && isLeader())) return;
+      if (relation(o, attacker) > -10 || !canReach(o, attacker) || warsOf(o).length > 1) return;
+      var p = U.clamp((t - 35) / 150 - relation(o, attacker) / 300 + (blocPower(defender) + power(o, true) > power(attacker) ? 0.1 : -0.1), 0, 0.6);
+      if (U.chance(p)) {
+        declareWar(o, attacker, { parent: w.id, quiet: true });
+        joined.push(o.short);
+      }
+    });
+    if (joined.length) log('⚔️ A coalition forms against ' + attacker.name + ': ' + joined.join(', ') + ' join the war on ' + defender.name + '\'s side!',
+      attacker.id === pid || defender.id === pid ? 'player' : 'major');
+  }
+
   // When a war starts, each treaty partner weighs whether to join (see joinChance).
   // Betraying a partner that was attacked breaks the treaty; declining to join a war of
   // aggression only cools relations. The player decides through call-to-arms events.
@@ -453,7 +532,12 @@ G.engine = (function () {
     alive().forEach(function (o) {
       if (o !== a && o !== b && relation(o, b) > 30) changeRel(o, a, -10);
     });
-    if (!opts.parent && !opts.noAllies) callAllies(w, a, b);
+    // Starting a war frightens the world, more so against small or friendly targets.
+    if (!opts.parent && !opts.noAllies) {
+      addThreat(a, 8 + (power(a) > power(b) * 3 ? 6 : 0) + (relation(a, b) > -20 ? 4 : 0));
+      callAllies(w, a, b);
+      coalitionResponse(w, a, b);
+    }
     return w;
   }
 
@@ -509,6 +593,7 @@ G.engine = (function () {
 
   function cede(winner, loser, frac) {
     frac = U.clamp(frac, 0.02, 0.3);
+    addThreat(winner, 6 + frac * 40);
     var dp = loser.pop * frac, dg = loser.gdp * frac;
     loser.pop -= dp; loser.gdp -= dg;
     winner.pop += dp * 0.9; winner.gdp += dg * 0.8;
@@ -546,8 +631,10 @@ G.engine = (function () {
   }
 
   function annex(winner, loser) {
+    addThreat(winner, 20 + Math.min(40, loser.pop / Math.max(1, winner.pop) * 60));
     winner.pop += loser.pop * 0.9;
-    winner.gdp += loser.gdp * 0.8;
+    // Conquered economies are disrupted: you only gain part of them (less on higher difficulty).
+    winner.gdp += loser.gdp * (ownedByPlayer(winner) ? diff().annex : 0.7);
     G.military.transfer(loser, winner, 0.6);
     winner.treasury += Math.max(0, loser.treasury);
     winner.space += loser.space * 0.5;
@@ -616,7 +703,7 @@ G.engine = (function () {
       // Unrest drifts towards a target set by integration, the occupier's stability and wars.
       // A big conquered people (relative to the occupier) is much harder to hold down.
       var weight = U.clamp(d.pop / Math.max(1, owner.pop) * 40, 0, 25);
-      var target = 60 - o.integ * 0.5 + (50 - owner.stability) * 0.6 + weight + (atWar(owner) ? 10 : 0) + occupiedBy(owner).length * 2 + modSum(owner, 'unrest');
+      var target = (60 - o.integ * 0.5 + (50 - owner.stability) * 0.6 + weight + (atWar(owner) ? 10 : 0) + occupiedBy(owner).length * 2 + modSum(owner, 'unrest') + (owner.threat || 0) * 0.1) * (ownedByPlayer(owner) ? diff().unrest : 1);
       o.unrest = U.clamp(o.unrest + (U.clamp(target, 0, 100) - o.unrest) * 0.15, 0, 100);
       if (o.unrest >= 55 && !o.warned) {
         o.warned = true;
@@ -706,7 +793,7 @@ G.engine = (function () {
       if (a.warYears > 0 || !U.chance(0.03 * a.aggression)) return;
       var targets = ns.filter(function (b) {
         return b !== a && canReach(a, b) && !warBetween(a, b) && !hasPact(a, b, 'nap') &&
-          relation(a, b) < -25 && !allied(a, b) && blocPower(a, true) > blocPower(b) * 1.4;
+          relation(a, b) < -25 && !allied(a, b) && blocPower(a, true) > blocPower(b) * ((b.threat || 0) > 60 ? 0.9 : 1.4);
       });
       if (!targets.length) return;
       var b = U.pick(targets);
@@ -888,6 +975,7 @@ G.engine = (function () {
       s.wars.slice().forEach(simulateWar);
       aiWarDecisions();
       aiAlliances();
+      threatYear();
       rebellions();
       if (G.events.worldNews) G.events.worldNews();
       aiLeaders();
@@ -982,7 +1070,7 @@ G.engine = (function () {
     yearsPerTurn: yearsPerTurn, era: era, allocShares: allocShares, revenue: revenue, funds: funds, power: power,
     SECTORS: SECTORS, syncSpend: syncSpend, spending: spending, debt: debt, debtRatio: debtRatio, interestRate: interestRate,
     interest: interest, balance: balance, borrowLimit: borrowLimit, projectCost: projectCost,
-    milestoneIndex: milestoneIndex, spaceRate: spaceRate, growthParts: growthParts, ceilingPc: ceilingPc, earthFactor: earthFactor,
+    milestoneIndex: milestoneIndex, spaceRate: spaceRate, sat: sat, DIFFICULTY: DIFFICULTY, diff: diff, threatLevel: threatLevel, addThreat: addThreat, growthParts: growthParts, ceilingPc: ceilingPc, earthFactor: earthFactor,
     allies: allies, allied: allied, allianceType: allianceType, joinChance: joinChance, occupiedBy: occupiedBy, occupation: occupation, resolveIndependence: resolveIndependence, formAlliance: formAlliance, breakAlliance: breakAlliance, blocPower: blocPower, relation: relation, changeRel: changeRel, wars: wars, warsOf: warsOf, atWar: atWar,
     warBetween: warBetween, enemiesOf: enemiesOf, hasPact: hasPact, addPact: addPact, canReach: canReach, rank: rank,
     declareWar: declareWar, endWar: endWar, cede: cede, capitulate: capitulate, addMod: addMod, becomeLeader: becomeLeader,

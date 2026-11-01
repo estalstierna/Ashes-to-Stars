@@ -29,6 +29,7 @@ G.ui = (function () {
   on('howto', function () {
     modal('<div class="kicker">How to play</div><h2>Ashes to Stars</h2>' +
       '<p>Every turn you get <b>2 actions</b>. Then press <b>End Turn</b> and the world moves forward: economies grow, wars rage, elections are held and rivals plot.</p>' +
+      '<p><b>The world pushes back.</b> Every war you start and every land you take raises how much the world <b>fears</b> you (see World → Diplomacy). High fear sours relations, makes nations sign defensive pacts against you and can bring a whole coalition into your next war. National programmes (like infrastructure or research grants) have cooldowns, and investment has diminishing returns, so balance matters more than maxing one budget line.</p>' +
       '<p>The <b>Science</b> tab holds the research tree: pick discoveries that give permanent bonuses. Your <b>power base</b> (Home) decides where your influence is heading. Win over the military, business, media, the people and the spies.</p>' +
       '<p>The <b>Economy</b> tab explains your growth, shows charts over time and holds the national budget. <b>Alliances</b> pull allies into each other\'s wars, and you will be called to arms if an ally is attacked.</p>' +
       '<p>The <b>Military</b> tab shows your manpower, equipment and branches. As head of state you set conscription and start multi-year military projects there.</p>' +
@@ -46,7 +47,7 @@ G.ui = (function () {
       '<button class="btn primary" data-act="tocreate">Create your character</button></div>';
   }
   on('tocreate', function () {
-    create = { name: '', gender: 'female', nation: null, role: null, age: 40 };
+    create = { name: '', gender: 'female', nation: null, role: null, age: 40, difficulty: 'normal' };
     createScreen();
   });
 
@@ -72,6 +73,10 @@ G.ui = (function () {
           (c.nation === n.id ? '<div class="d" style="color:#c9d2e0;margin-top:6px">' + esc(n.desc) + '</div>' : '') +
           '</button>';
       }).join('') +
+      '<label class="field">Difficulty</label><div class="seg">' +
+      Object.keys(E.DIFFICULTY).map(function (k) {
+        return '<button class="' + (c.difficulty === k ? 'sel' : '') + '" data-act="pdiff" data-arg="' + k + '">' + E.DIFFICULTY[k].name + '</button>';
+      }).join('') + '</div><div class="small muted" style="margin-top:6px">' + esc(E.DIFFICULTY[c.difficulty].desc) + '</div>' +
       '<label class="field">Starting role</label>' +
       Object.keys(D.roles).map(function (r) {
         var ro = D.roles[r];
@@ -90,6 +95,7 @@ G.ui = (function () {
   on('age', function (v) { create.age = +v; $('agev').textContent = v; });
   on('gender', function (g) { create.gender = g; createScreen(); });
   on('pnation', function (id) { create.nation = id; keepScroll(createScreen); });
+  on('pdiff', function (d) { create.difficulty = d; keepScroll(createScreen); });
   on('prole', function (r) { create.role = r; keepScroll(createScreen); });
   on('randname', function () {
     var cul = create.nation ? D.nations.filter(function (n) { return n.id === create.nation; })[0].culture : U.pick(['anglo', 'nordic', 'euro', 'latin', 'pacific']);
@@ -101,7 +107,7 @@ G.ui = (function () {
   });
   on('start', function () {
     if (!(create.name.trim() && create.nation && create.role)) return;
-    E.newGame({ name: create.name.trim(), gender: create.gender, nation: create.nation, role: create.role, age: create.age });
+    E.newGame({ name: create.name.trim(), gender: create.gender, nation: create.nation, role: create.role, age: create.age, difficulty: create.difficulty });
     S().event = EV.roll();
     E.save();
     K.view.tab = 'home';

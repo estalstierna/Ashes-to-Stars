@@ -18,11 +18,12 @@
     Object.keys(cats).forEach(function (c) {
       h += '<h3 style="margin:16px 0 8px">' + c + '</h3>';
       cats[c].forEach(function (a) {
-        var used = s.used.indexOf(a.id) >= 0, cost = A.costFor(a), can = A.affordable(a) && s.ap > 0 && !used;
+        var used = s.used.indexOf(a.id) >= 0, cost = A.costFor(a), cd = A.cooldown(a), can = A.affordable(a) && s.ap > 0 && !used;
         var costS = cost === 0 ? 'Free' : (E.isLeader() ? U.money(cost) : wealthStr(cost));
         h += '<div class="action ' + (used ? 'used' : '') + '"><div class="row"><div class="name">' + esc(a.name) + '</div><div class="cost">' + costS + '</div></div>' +
-          '<div class="desc">' + esc(a.desc) + '</div>' +
-          '<button class="btn sm ' + (can ? 'blue' : '') + '" data-act="doaction" data-arg="' + a.id + '" ' + (can ? '' : 'disabled') + '>' + (used ? 'Done' : 'Do it') + '</button></div>';
+          '<div class="desc">' + esc(a.desc) + (a.cd ? ' <span class="muted">Can be used every ' + a.cd + ' year' + (a.cd === 1 ? '' : 's') + '.</span>' : '') + '</div>' +
+          '<button class="btn sm ' + (can ? 'blue' : '') + '" data-act="doaction" data-arg="' + a.id + '" ' + (can ? '' : 'disabled') + '>' +
+          (used ? 'Done' : cd > 0 ? 'Ready in ' + cd + ' yr' : 'Do it') + '</button></div>';
       });
     });
     return h;

@@ -24,6 +24,11 @@ A text-based grand strategy RPG for mobile browsers.
   - A breakdown of exactly why the economy grows or shrinks.
   - Charts of GDP and treasury/debt over time (tap to see values).
   - The national budget, trade agreements and a ranking of world economies.
+- **Difficulty and balance:**
+  - Four difficulty levels: Easy, Normal, Hard and Brutal. They set AI growth, the cost of your actions, how strongly the world reacts to your expansion, war weariness, unrest in occupied lands and how much of a conquered economy you gain.
+  - **Threat (aggressive expansion):** wars, conquests and annexations make the world fear you. Fear sours relations, leads nations to sign defensive pacts against you and can bring a coalition into your next war. It fades in peacetime.
+  - Investment in the economy, science, space and welfare has diminishing returns.
+  - Stacked growth bonuses are capped at +3%, and national programmes have cooldowns.
 - **Treaties and alliances** (World → Diplomacy):
   - Three treaty types: non-aggression pact (15 years), defensive pact (defend each other only when attacked) and full alliance (defend each other, and may join each other's wars of aggression).
   - When a war starts, every treaty partner weighs whether to join. This depends on the treaty type, which side its partner is on (defending is far more likely than attacking), relations with both sides, whether together they can win, other wars it is fighting, any pact with the enemy, and distance.
@@ -86,6 +91,7 @@ To install it on a phone, open the URL and choose **Share → Add to Home Screen
 npm test            # simulation (6 full games to year 3000) + every event choice
 npm run test:ui     # mobile browser tests: smoke test + UI flows (needs Playwright + Chromium)
 npm run test:all    # everything
+node tests/balance.js USA 2150 4 war   # balance check: an aggressive (war) or min-maxing (econ) bot per difficulty
 ```
 
 GitHub Actions runs all of them on every push (`.github/workflows/test.yml`).

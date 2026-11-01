@@ -67,7 +67,7 @@ G.research = (function () {
   // a little extra for big economies, more as general technology rises.
   function rate(n) {
     var f = E().funds(n), g = E().gov(n);
-    var ratio = f.sci / n.gdp;
+    var ratio = E().sat(f.sci / n.gdp, 0.05) * 1.1; // diminishing returns on science spending
     return ratio * 1800 * g.sci * (1 + Math.max(0, Math.log10(n.gdp / 500)) * 0.25) * Math.sqrt(n.tech / 80) * (1 + bonus(n, 'research'));
   }
 

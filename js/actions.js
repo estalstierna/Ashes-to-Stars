@@ -11,13 +11,13 @@ G.actions = (function () {
   // cost: fraction of GDP from treasury (leader) or $M of personal wealth (others).
   var list = [
     // ----- Leader: Politics -----
-    { id: 'propaganda', cat: 'Politics', role: 'leader', name: 'National address', cost: 0.004,
+    { id: 'propaganda', cd: 2, cat: 'Politics', role: 'leader', name: 'National address', cost: 0.004,
       desc: 'Rally the nation behind your vision. Approval up, popularity up.',
       run: function () { var n = N(); E.addMod(n, 'approval', 7, 2); P().popularity = U.clamp(P().popularity + 5, 0, 100); G.character.change('media', 3); G.character.change('public', 3); return 'The nation listens. Approval is rising.'; } },
-    { id: 'reforms', cat: 'Politics', role: 'leader', name: 'Institutional reforms', cost: 0.01,
+    { id: 'reforms', cd: 4, cat: 'Politics', role: 'leader', name: 'Institutional reforms', cost: 0.01,
       desc: 'Strengthen courts, police and bureaucracy. Stability up, slightly unpopular.',
       run: function () { var n = N(); E.addMod(n, 'stability', 10, 4); E.addMod(n, 'approval', -3, 2); P().influence = U.clamp(P().influence + 4, 0, 100); return 'Reforms pass. The state grows sturdier.'; } },
-    { id: 'crackdown', cat: 'Politics', role: 'leader', name: 'Crack down on dissent', cost: 0.006,
+    { id: 'crackdown', cd: 3, cat: 'Politics', role: 'leader', name: 'Crack down on dissent', cost: 0.006,
       desc: 'Arrest agitators and silence critics. Big stability boost, approval falls, especially in democracies.',
       run: function () {
         var n = N(), k = E.gov(n).crack;
@@ -27,7 +27,7 @@ G.actions = (function () {
         G.character.change('intel', 6); G.character.change('media', -8); G.character.change('public', -5);
         return 'Security forces sweep the streets. Order returns, at a price.';
       } },
-    { id: 'purge', cat: 'Politics', role: 'leader', name: 'Purge rivals', cost: 0.005,
+    { id: 'purge', cd: 4, cat: 'Politics', role: 'leader', name: 'Purge rivals', cost: 0.005,
       cond: function () { return !democratic(N()); },
       desc: 'Remove potential traitors from the inner circle. Influence up, coup risk down.',
       run: function () {
@@ -38,7 +38,7 @@ G.actions = (function () {
         if (U.chance(0.1)) { E.addMod(N(), 'stability', -10, 2); return 'The purge goes too far. Whispers of tyranny spread in the barracks.'; }
         return 'Several ministers vanish overnight. Nobody dares to ask questions.';
       } },
-    { id: 'govchange', cat: 'Politics', role: 'leader', name: 'Change the system', cost: 0.015, target: 'gov',
+    { id: 'govchange', cd: 10, cat: 'Politics', role: 'leader', name: 'Change the system', cost: 0.015, target: 'gov',
       desc: 'Rewrite the constitution and change the form of government.',
       run: function (g) {
         var n = N(), old = E.gov(n).name;
@@ -53,7 +53,7 @@ G.actions = (function () {
           'The new order is proclaimed. ' + G.data.govs[g].desc;
       } },
 
-    { id: 'pacify', cat: 'Politics', role: 'leader', name: 'Pacify occupied lands', cost: 0.008,
+    { id: 'pacify', cd: 3, cat: 'Politics', role: 'leader', name: 'Pacify occupied lands', cost: 0.008,
       cond: function () { return E.occupiedBy(N()).length > 0; },
       desc: 'Garrisons, curfews and rebuilding money in conquered territories. Unrest −20 there for now; the people at home grumble.',
       run: function () {
@@ -61,7 +61,7 @@ G.actions = (function () {
         E.addMod(N(), 'approval', -2, 1);
         return 'The occupied territories fall quiet. For now.';
       } },
-    { id: 'autonomy', cat: 'Politics', role: 'leader', name: 'Grant regional autonomy', cost: 0.004,
+    { id: 'autonomy', cd: 5, cat: 'Politics', role: 'leader', name: 'Grant regional autonomy', cost: 0.004,
       cond: function () { return E.occupiedBy(N()).length > 0; },
       desc: 'Local parliaments and language rights for conquered peoples. Integration speeds up for 10 years and unrest falls.',
       run: function () {
@@ -71,10 +71,10 @@ G.actions = (function () {
       } },
 
     // ----- Leader: Military -----
-    { id: 'mobilize', cat: 'Military', role: 'leader', name: 'Call up reserves', cost: 0.01,
+    { id: 'mobilize', cd: 3, cat: 'Military', role: 'leader', name: 'Call up reserves', cost: 0.01,
       desc: 'Instantly call up reservists: manpower +25% (it drifts back to your conscription level over a few years).',
       run: function () { var n = N(); n.mil.men *= 1.25; E.addMod(n, 'approval', -3, 1); return 'Reservists report to their units. The army swells.'; } },
-    { id: 'weapons', cat: 'Military', role: 'leader', name: 'Emergency arms purchase', cost: 0.015,
+    { id: 'weapons', cd: 3, cat: 'Military', role: 'leader', name: 'Emergency arms purchase', cost: 0.015,
       desc: 'Buy equipment off the shelf for every branch. Equipment +10%.',
       run: function () { G.military.scale(N(), 1.1); return 'New weapon systems roll off the production lines.'; } },
     { id: 'war', cat: 'Military', role: 'leader', name: 'Declare war', cost: 0.01, target: 'reachable',
@@ -123,10 +123,10 @@ G.actions = (function () {
       } },
 
     // ----- Leader: Economy -----
-    { id: 'infra', cat: 'Economy', role: 'leader', name: 'Rebuild infrastructure', cost: 0.03,
+    { id: 'infra', cd: 4, cat: 'Economy', role: 'leader', name: 'Rebuild infrastructure', cost: 0.03,
       desc: 'Rebuild cities, power grids and railways. +1.5% growth for 4 years.',
       run: function () { E.addMod(N(), 'growth', 0.015, 4); E.addMod(N(), 'approval', 3, 2); return 'Cranes rise over the ruins. The economy stirs.'; } },
-    { id: 'welfare', cat: 'Economy', role: 'leader', name: 'Welfare package', cost: 0.02,
+    { id: 'welfare', cd: 3, cat: 'Economy', role: 'leader', name: 'Welfare package', cost: 0.02,
       desc: 'Food, housing and healthcare for survivors. Approval up, population grows.',
       run: function () { E.addMod(N(), 'approval', 8, 2); E.addMod(N(), 'pop', 0.004, 4); return 'Ration lines shrink. People believe in tomorrow again.'; } },
     { id: 'trade', cat: 'Economy', role: 'leader', name: 'Trade agreement', cost: 0.003, target: 'trade',
@@ -141,7 +141,7 @@ G.actions = (function () {
         E.log('🤝 ' + n.name + ' and ' + t.name + ' sign a trade agreement.', 'player');
         return 'Deal signed. Trade flows.';
       } },
-    { id: 'green', cat: 'Economy', role: 'leader', name: 'Earth restoration', cost: 0.02,
+    { id: 'green', cd: 2, cat: 'Economy', role: 'leader', name: 'Earth restoration', cost: 0.02,
       desc: 'Decontaminate wastelands and replant forests. Heals the planet (raises everyone\'s economic ceiling).',
       run: function () {
         var n = N(), share = n.gdp / E.alive().reduce(function (a, x) { return a + x.gdp; }, 0);
@@ -153,10 +153,10 @@ G.actions = (function () {
       } },
 
     // ----- Leader: Science & Space -----
-    { id: 'research', cat: 'Science & Space', role: 'leader', name: 'Research grant', cost: 0.02,
+    { id: 'research', cd: 2, cat: 'Science & Space', role: 'leader', name: 'Research grant', cost: 0.02,
       desc: 'Fund universities and labs. Tech +2.5 and two years of research points at once.',
       run: function () { N().tech += 2.5; G.research.boost(N(), 2); return 'Breakthroughs in fusion, AI and medicine.'; } },
-    { id: 'mission', cat: 'Science & Space', role: 'leader', name: 'Crash space programme', cost: 0.025,
+    { id: 'mission', cd: 3, cat: 'Science & Space', role: 'leader', name: 'Crash space programme', cost: 0.025,
       desc: 'Pour resources into the next big leap. Space progress +50% for 3 years plus an immediate boost.',
       run: function () {
         var n = N();
@@ -345,8 +345,15 @@ G.actions = (function () {
   function strengthAppeal(n, t) { return U.clamp((E.power(n) / Math.max(1, E.power(t)) - 1) * 0.05, -0.1, 0.15); }
 
   function costFor(a) {
-    if (a.role === 'leader') return a.cost * N().gdp;
+    if (a.role === 'leader') return a.cost * N().gdp * E.diff().cost;
     return a.cost;
+  }
+
+  // Years until an action can be used again (0 = ready). Cooldowns stop repeating the same
+  // national programme every turn.
+  function cooldown(a) {
+    var n = N(); if (!a.cd || !n.cool) return 0;
+    return Math.max(0, (n.cool[a.id] || 0) - S().year);
   }
 
   function available() {
@@ -362,6 +369,7 @@ G.actions = (function () {
   }
 
   function affordable(a) {
+    if (cooldown(a) > 0) return false;
     var c = costFor(a), p = P();
     // Governments may borrow for actions, up to a debt limit.
     if (a.role === 'leader') return c === 0 || N().treasury - c >= -E.borrowLimit(N());
@@ -392,10 +400,11 @@ G.actions = (function () {
     if (a.role === 'leader') N().treasury -= c; else P().wealth -= c;
     s.ap--;
     s.used.push(id);
+    if (a.cd) { var n = N(); n.cool = n.cool || {}; n.cool[a.id] = S().year + a.cd; }
     var res = a.run(target);
     E.save();
     return res;
   }
 
-  return { list: list, available: available, affordable: affordable, costFor: costFor, targets: targets, perform: perform };
+  return { list: list, available: available, affordable: affordable, cooldown: cooldown, costFor: costFor, targets: targets, perform: perform };
 })();
