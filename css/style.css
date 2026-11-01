@@ -160,3 +160,4 @@ label.field { display: block; margin: 16px 0 6px; font-size: 13px; color: var(--
 .chart-tip { position: absolute; top: 2px; transform: translate(-50%, 0); background: #222c3d; border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; font-size: 12px; white-space: nowrap; pointer-events: none; }
 .tabs button { font-size: 10px; }
 .action.sel-action { border-color: var(--accent2); box-shadow: 0 0 0 1px var(--accent2) inset; }
+.btn.sm { white-space: nowrap; }

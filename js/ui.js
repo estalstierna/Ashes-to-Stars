@@ -1045,15 +1045,44 @@ G.ui = (function () {
   on('abandon', function () { if (confirm('Delete this save and return to the title screen?')) { E.wipe(); G.state = null; titleScreen(); } });
 
   // ---------- turn flow ----------
+  // Things the player could still do this turn.
+  function turnWarnings() {
+    var s = S(), n = E.pn(), out = [];
+    if (s.ap > 0) out.push({ icon: '⚡', text: 'You have ' + s.ap + ' unused action' + (s.ap === 1 ? '' : 's') + '.', tab: 'act', btn: 'Actions' });
+    if (E.isLeader()) {
+      var rs = G.research.ensure(n);
+      if (!rs.active && G.research.available(n).length && G.research.rate(n) > 0)
+        out.push({ icon: '🔬', text: 'Nothing is being researched' + (rs.bank >= 1 ? ' (' + Math.floor(rs.bank) + ' RP waiting)' : '') + '.', tab: 'sci', btn: 'Science' });
+      var M = G.military, free = M.slots(n) - n.mil.active.length;
+      var canStart = M.PROJECTS.some(function (pr) { return M.projectState(n, pr) === 'available'; });
+      if (free > 0 && canStart && n.treasury > -E.borrowLimit(n) * 0.8)
+        out.push({ icon: '🎖️', text: free + ' military project slot' + (free === 1 ? ' is' : 's are') + ' free.', tab: 'mil', btn: 'Military' });
+    }
+    return out;
+  }
   on('endturn', function () {
     if (S().event) { showEvent(); return; }
     if (S().succession) { showSuccession(); return; }
-    if (S().ap > 0 && !confirm('You still have ' + S().ap + ' unused action' + (S().ap === 1 ? '' : 's') + '. End turn anyway?')) return;
+    var warn = turnWarnings();
+    if (warn.length) {
+      modal('<div class="kicker">Before you end the turn</div><h2>Anything left to do?</h2>' +
+        warn.map(function (w) {
+          return '<div class="action"><div class="row"><div class="name">' + w.icon + ' ' + esc(w.text) + '</div>' +
+            '<button class="btn sm blue" data-act="warngo" data-arg="' + w.tab + '">' + w.btn + ' ›</button></div></div>';
+        }).join('') +
+        '<button class="btn primary" data-act="endturn-force">End turn anyway</button><button class="btn" data-act="close">Cancel</button>');
+      return;
+    }
+    doEndTurn();
+  });
+  on('warngo', function (t) { closeModal(); tab = t; if (t === 'sci') sciView = 'research'; render(); window.scrollTo(0, 0); });
+  on('endturn-force', function () { closeModal(); doEndTurn(); });
+  function doEndTurn() {
     E.endTurn();
     render();
     window.scrollTo(0, 0);
     showSummary();
-  });
+  }
 
   function showSummary() {
     var s = S(), sm = s.summary, n = E.pn(), p = s.player;

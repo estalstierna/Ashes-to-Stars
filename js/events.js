@@ -348,7 +348,9 @@ G.events = (function () {
 
   function roll() {
     if (!U.chance(0.75)) return null;
-    var pool = eligible();
+    // Avoid repeating the same event within a few turns.
+    var recent = S().recentEvents || [];
+    var pool = eligible().filter(function (d) { return recent.indexOf(d.id) < 0; });
     if (!pool.length) return null;
     var total = pool.reduce(function (a, d) { return a + d.w; }, 0), r = U.rand() * total, d = pool[0];
     for (var i = 0; i < pool.length; i++) { r -= pool[i].w; if (r <= 0) { d = pool[i]; break; } }
@@ -360,6 +362,7 @@ G.events = (function () {
     var store = {};
     for (var k in c) if (k !== 'o') store[k] = c[k];
     store.oid = o.id;
+    S().recentEvents = recent.concat([d.id]).slice(-12);
     return { id: d.id, ctx: store };
   }
 

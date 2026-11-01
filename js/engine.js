@@ -889,6 +889,7 @@ G.engine = (function () {
       aiWarDecisions();
       aiAlliances();
       rebellions();
+      if (G.events.worldNews) G.events.worldNews();
       aiLeaders();
       playerPolitics();
       if (!s.succession || !s.succession.dead) playerAging();

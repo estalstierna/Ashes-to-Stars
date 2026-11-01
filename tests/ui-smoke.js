@@ -26,7 +26,7 @@ const path = require('path');
   async function clearModals() {
     for (let i = 0; i < 10; i++) {
       if (await page.isHidden('#modal')) return;
-      for (const sel of ['[data-act=evchoice]', '[data-act=resultok]', '[data-act=summaryok]', '[data-act=successor]', '[data-act=close]']) {
+      for (const sel of ['[data-act=endturn-force]', '[data-act=evchoice]', '[data-act=resultok]', '[data-act=summaryok]', '[data-act=successor]', '[data-act=close]']) {
         const el = await page.$('#modal ' + sel);
         if (el) { await el.click(); break; }
       }
