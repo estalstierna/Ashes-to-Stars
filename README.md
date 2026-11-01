@@ -39,7 +39,14 @@ A text-based grand strategy RPG for mobile browsers.
   - Drag to pan, pinch to zoom, and tap a nation to open its details.
   - Three modes: Nations, Terrain and Diplomacy (coloured by your relations).
   - The world is divided into about 500 provinces. When a nation cedes land in a peace deal, the provinces along the border change hands, so the map shows partial losses too.
-  - Fully conquered nations take on the conqueror's colour, and rebels win their old provinces back.
+  - Fully conquered nations take on the conqueror's colour.
+- **Occupation and independence:**
+  - Conquered nations have unrest and integration.
+  - Decades of stable rule integrate them for good. Instability, wars and a large conquered population fuel unrest.
+  - High unrest first gives a resistance movement, then a regional uprising: only part of the homeland (about 15–35%) rises, with its share of the people.
+  - The uprising becomes a guerrilla war of independence. Win it and the whole homeland is freed; lose it and the uprising is crushed for a generation.
+  - New states start unstable and do not wage wars of aggression for 15 years.
+  - Rulers can use "Pacify occupied lands" or "Grant regional autonomy". The Military tab shows unrest and integration for each occupied nation.
   - A brown haze shows war damage to the Earth and clears as the planet heals.
 - Works offline, autosaves, and can be installed to the home screen as an app (PWA).
 

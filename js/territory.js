@@ -76,6 +76,35 @@ G.territory = (function () {
     if (!n && G.mapdata.labelProv[id] >= 0) prov[G.mapdata.labelProv[id]] = id;
   }
 
+  // A regional uprising: a connected cluster of the nation's original provinces, still held by
+  // the occupier, breaks away. Returns the share of the occupier's land that rebelled (0 = none).
+  function uprising(id, fromId, frac) {
+    if (!enabled()) return 0;
+    var prov = S().prov, list = P();
+    var cand = [];
+    list.forEach(function (p, i) { if (p.n === id && prov[i] === fromId) cand.push(i); });
+    if (!cand.length) return 0;
+    var ownerW = weightOf(owned(fromId));
+    var target = weightOf(cand) * frac, set = {}, taken = 0;
+    var start = cand[Math.floor(G.util.rand() * cand.length)], queue = [start];
+    while (queue.length && (taken < target || taken === 0)) {
+      var i = queue.shift();
+      if (set[i]) continue;
+      set[i] = true; taken += list[i].w; prov[i] = id;
+      list[i].a.forEach(function (j) { if (!set[j] && list[j].n === id && prov[j] === fromId) queue.push(j); });
+    }
+    var homeW = weightOf(list.map(function (_, i) { return i; }).filter(function (i) { return list[i].n === id; }));
+    // Share of the occupied nation's homeland that rose up (used for population and economy).
+    return homeW > 0 ? taken / homeW : 0;
+  }
+  // Share of a nation's original homeland that it holds right now.
+  function homeShare(id) {
+    if (!enabled()) return 0;
+    var list = P(), prov = S().prov, all = 0, mine = 0;
+    list.forEach(function (p, i) { if (p.n === id) { all += p.w; if (prov[i] === id) mine += p.w; } });
+    return all > 0 ? mine / all : 0;
+  }
+
   // Nations whose provinces touch this nation's provinces on the map.
   function bordering(id) {
     if (!enabled()) return [];
@@ -94,5 +123,5 @@ G.territory = (function () {
     return weightOf(owned(id)) / all;
   }
 
-  return { init: init, owned: owned, center: center, cede: cede, annex: annex, restore: restore, landShare: landShare, bordering: bordering, enabled: enabled };
+  return { init: init, owned: owned, center: center, cede: cede, annex: annex, restore: restore, uprising: uprising, homeShare: homeShare, landShare: landShare, bordering: bordering, enabled: enabled };
 })();

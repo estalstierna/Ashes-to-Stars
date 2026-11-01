@@ -414,7 +414,7 @@ G.engine = (function () {
     alive().forEach(function (o) {
       if (o !== a && o !== b && relation(o, b) > 30) changeRel(o, a, -10);
     });
-    if (!opts.parent) callAllies(w, a, b);
+    if (!opts.parent && !opts.noAllies) callAllies(w, a, b);
     return w;
   }
 
@@ -438,7 +438,13 @@ G.engine = (function () {
     var a = nation(w.a), b = nation(w.b);
     if (!a.alive || !b.alive) { endWar(w); return; }
     // b is the defender (missile shields help).
-    var pa = power(a), pb = power(b, true), tot = pa + pb || 1;
+    var pa = power(a), pb = power(b, true);
+    // Wars of independence are guerrilla wars: the occupier only commits garrisons.
+    // The garrison is proportional to how big the rebel region is compared with the occupier.
+    // A guerrilla war is decided by local support, not tanks: rebels fight the garrison with
+    // the strength they had when they rose up (see uprising()).
+    if (w.independence) { pb *= U.clamp(2 * a.pop / Math.max(1, b.pop), 0.03, 0.4); pa = pb * (w.rebelStr || 1); }
+    var tot = pa + pb || 1;
     G.military.losses(a, U.clamp(0.12 * pb / tot, 0.01, 0.25));
     G.military.losses(b, U.clamp(0.12 * pa / tot, 0.01, 0.25));
     w.score = U.clamp(w.score + ((pa - pb) / tot) * 35 + U.randInt(-6, 6), -100, 100);
@@ -454,6 +460,7 @@ G.engine = (function () {
     if (w.a !== p && w.b !== p) {
       var years = S().year - w.start;
       if ((Math.abs(w.score) > 40 && U.chance(0.15)) || (years > 6 && U.chance(0.12))) {
+        if (w.independence) return resolveIndependence(w, w.score > -10);
         var winner = w.score >= 0 ? a : b, loser = w.score >= 0 ? b : a;
         cede(winner, loser, Math.abs(w.score) / 100 * 0.12);
         endWar(w, '🕊️ ' + loser.name + ' sues for peace with ' + winner.name + ' and cedes territory.');
@@ -488,6 +495,7 @@ G.engine = (function () {
   }
 
   function capitulate(w, winner, loser) {
+    if (w.independence) return resolveIndependence(w, winner.id === w.a);
     var full = loser.gdp < winner.gdp * 0.2;
     if (full) {
       annex(winner, loser);
@@ -511,8 +519,11 @@ G.engine = (function () {
         if (nation(id).neighbors.indexOf(winner.id) < 0) nation(id).neighbors.push(winner.id);
       }
     });
+    loser.popAtAnnex = loser.pop; loser.gdpAtAnnex = loser.gdp; loser.ownerGdpAtAnnex = winner.gdp;
     loser.alive = false;
     loser.annexedBy = winner.id;
+    loser.integrated = false;
+    loser.occ = { unrest: 45, integ: loser.occ ? loser.occ.integ * 0.5 : 0, since: S().year, warned: false };
     G.territory.annex(winner.id, loser.id);
     S().wars.filter(function (x) { return x.a === loser.id || x.b === loser.id; }).forEach(function (x) { endWar(x); });
     var p = S().player;
@@ -531,36 +542,118 @@ G.engine = (function () {
   }
 
   // Conquered nations can rise again when their occupier is unstable.
-  function rebellions() {
+  function stat(k) { var s = S(); s.stats = s.stats || {}; s.stats[k] = (s.stats[k] || 0) + 1; }
+
+  // ---------- occupation, integration and independence ----------
+  // Every conquered nation has unrest (0-100) and integration (0-100). A stable occupier slowly
+  // integrates it; instability, wars and fresh conquest fuel unrest. High unrest leads to a
+  // regional uprising: only part of the land rises, and must then win a war of independence.
+  function occupation(d) {
+    if (!d.occ) d.occ = { unrest: 40, integ: 0, since: S().year, warned: false };
+    return d.occ;
+  }
+  function occupiedBy(owner) {
     var ns = S().nations;
+    return Object.keys(ns).map(function (k) { return ns[k]; })
+      .filter(function (d) { return !d.alive && d.annexedBy === owner.id && !d.integrated; });
+  }
+
+  function rebellions() {
+    var ns = S().nations, pid = S().player.nation;
     Object.keys(ns).forEach(function (id) {
       var d = ns[id], owner = d.annexedBy && ns[d.annexedBy];
-      if (d.alive || !owner || !owner.alive) return;
-      // Big empires are restless: every nation held adds pressure, even under a stable regime.
-      var held = Object.keys(ns).filter(function (k) { return !ns[k].alive && ns[k].annexedBy === owner.id; }).length;
-      var unrest = 50 + held * 4;
-      if (owner.stability > unrest || !U.chance(0.02 + (unrest - owner.stability) * 0.002)) return;
-      var frac = U.clamp(d.pop / (owner.pop + d.pop), 0.05, 0.3);
-      d.alive = true;
-      d.pop = owner.pop * frac; d.gdp = owner.gdp * frac;
-      owner.pop -= d.pop; owner.gdp -= d.gdp;
-      d.tech = owner.tech * 0.95; d.space = owner.space * 0.1;
-      d.treasury = d.gdp * 0.02; d.stability = 50; d.approval = 65; d.warYears = 0; d.mods = [];
-      d.gov = U.pick(['democracy', 'democracy', 'junta', 'autocracy']);
-      syncSpend(d);
-      G.military.init(d, funds(d).mil, 0.6);
-      G.military.scale(owner, 1 - frac * 0.5);
-      d.leader = makeLeader(d);
-      d.annexedBy = null;
-      d.neighbors.forEach(function (nid) { if (ns[nid].neighbors.indexOf(d.id) < 0) ns[nid].neighbors.push(d.id); });
-      if (d.neighbors.indexOf(owner.id) < 0) d.neighbors.push(owner.id);
-      if (owner.neighbors.indexOf(d.id) < 0) owner.neighbors.push(d.id);
-      changeRel(d, owner, -50);
-      G.territory.restore(d.id, owner.id);
-      addPact(d, owner, 'nap', 5);
-      var pid = S().player.nation;
-      log('🔥 ' + d.name + ' rises from the ashes and declares independence from ' + owner.name + '!', owner.id === pid ? 'player' : 'major');
+      if (d.alive || d.integrated || !owner || !owner.alive) return;
+      var o = occupation(d);
+      var mine = owner.id === pid;
+      // Integration: decades of stable rule turn conquered land into home.
+      // Only peaceful, stable rule integrates; a restless population does not.
+      o.integ = U.clamp(o.integ + (o.unrest < 50 ? U.clamp((owner.stability - 45) / 25, -1, 1) : -0.5), 0, 100);
+      if (o.integ >= 100) {
+        d.integrated = true;
+        stat('integrated');
+        log('🧩 ' + d.name + ' has been fully integrated into ' + owner.name + '. Its people no longer dream of independence.', mine ? 'player' : 'world');
+        return;
+      }
+      // Unrest drifts towards a target set by integration, the occupier's stability and wars.
+      // A big conquered people (relative to the occupier) is much harder to hold down.
+      var weight = U.clamp(d.pop / Math.max(1, owner.pop) * 40, 0, 25);
+      var target = 60 - o.integ * 0.5 + (50 - owner.stability) * 0.6 + weight + (atWar(owner) ? 10 : 0) + occupiedBy(owner).length * 2 + modSum(owner, 'unrest');
+      o.unrest = U.clamp(o.unrest + (U.clamp(target, 0, 100) - o.unrest) * 0.15, 0, 100);
+      if (o.unrest >= 55 && !o.warned) {
+        o.warned = true;
+        log('✊ A resistance movement is growing in occupied ' + d.name + '.', mine ? 'player' : 'world');
+      }
+      if (o.unrest < 50) o.warned = false;
+      if (o.unrest >= 70 && !(o.calm > S().year) && U.chance(0.06 + (o.unrest - 70) * 0.004)) uprising(d, owner);
     });
+  }
+
+  // Part of an occupied nation rises up and fights for independence.
+  function uprising(d, owner) {
+    var ns = S().nations, pid = S().player.nation;
+    var share = G.territory.uprising(d.id, owner.id, U.rand() * 0.2 + 0.15);
+    if (!share) return;
+    // The rebels are the people of that region: a share of the occupied nation's own
+    // population and economy (as it was when conquered, grown with the occupier since).
+    var growthSince = d.gdpAtAnnex ? U.clamp(owner.gdp / d.ownerGdpAtAnnex, 0.5, 20) : 1;
+    var home = { pop: d.popAtAnnex || d.pop, gdp: (d.gdpAtAnnex || d.gdp) * growthSince };
+    d.alive = true;
+    d.pop = Math.min(owner.pop * 0.3, home.pop * share);
+    d.gdp = Math.min(owner.gdp * 0.3, home.gdp * share * 0.7);
+    d.home = home;
+    var frac = U.clamp(d.gdp / owner.gdp, 0.005, 0.3);
+    owner.pop -= d.pop; owner.gdp -= d.gdp;
+    d.tech = owner.tech * 0.9; d.space = 0;
+    d.treasury = 0; d.stability = 25; d.approval = 75; d.warYears = 0; d.mods = []; d.born = S().year;
+    d.gov = U.pick(['junta', 'junta', 'democracy', 'autocracy']);
+    d.annexedBy = null; d.occ = null;
+    syncSpend(d);
+    // The rebels seize local armouries and defecting garrisons: half of the occupier's
+    // equipment in the region changes sides. Volunteers flood in.
+    G.military.init(d, funds(d).mil, 0.3);
+    G.military.BRANCHES.forEach(function (br) { var x = owner.mil.eq[br] * frac * 0.5; d.mil.eq[br] = x; owner.mil.eq[br] -= x; });
+    d.mil.consc = 0.03; d.mil.men = d.pop * 1000 * 0.025;
+    d.leader = makeLeader(d);
+    d.neighbors.forEach(function (nid) { if (ns[nid] && ns[nid].neighbors.indexOf(d.id) < 0) ns[nid].neighbors.push(d.id); });
+    if (d.neighbors.indexOf(owner.id) < 0) d.neighbors.push(owner.id);
+    if (owner.neighbors.indexOf(d.id) < 0) owner.neighbors.push(d.id);
+    changeRel(d, owner, -80);
+    addMod(owner, 'stability', -6, 3);
+    var w = declareWar(d, owner, { quiet: true, noAllies: true });
+    if (w) {
+      w.independence = true;
+      // Rebel strength vs the garrison: luck, a weak occupier and wars elsewhere all help.
+      w.rebelStr = U.clamp(0.4 + U.rand() * 0.9 + (50 - owner.stability) / 100 + (warsOf(owner).length > 1 ? 0.3 : 0), 0.3, 2.5);
+    }
+    stat('uprisings');
+    log('🔥 Uprising! Rebels in part of occupied ' + d.name + ' proclaim independence from ' + owner.name + '. A war of independence begins.',
+      owner.id === pid ? 'player' : 'major');
+  }
+
+  // End of a war of independence: rebels (side a) either win their whole homeland back or are crushed.
+  function resolveIndependence(w, rebelsWon) {
+    var rebels = nation(w.a), owner = nation(w.b), pid = S().player.nation;
+    if (rebelsWon) {
+      var before = G.territory.homeShare(rebels.id);
+      G.territory.restore(rebels.id, owner.id);
+      var gained = G.territory.homeShare(rebels.id) - before;
+      // The rest of the homeland's people and economy come home too.
+      var home = rebels.home || { pop: rebels.pop / Math.max(0.05, before), gdp: rebels.gdp / Math.max(0.05, before) };
+      var dp = Math.min(owner.pop * 0.4, home.pop * gained), dg = Math.min(owner.gdp * 0.4, home.gdp * gained * 0.7);
+      rebels.pop += dp; rebels.gdp += dg; owner.pop -= dp; owner.gdp -= dg;
+      rebels.stability = Math.max(rebels.stability, 40);
+      addMod(rebels, 'approval', 15, 5); addMod(owner, 'approval', -8, 3);
+      stat('independence');
+      endWar(w, '🎉 ' + rebels.name + ' wins its war of independence! ' + owner.name + ' withdraws from its former territory.');
+      if (owner.id === pid) S().player.legacy -= 5;
+    } else {
+      annex(owner, rebels);
+      // Crushed: the people are exhausted for a generation.
+      occupation(rebels).unrest = 15;
+      occupation(rebels).calm = S().year + 25;
+      stat('crushed');
+      endWar(w, '⛓️ The uprising in ' + rebels.name + ' is crushed by ' + owner.name + '.');
+    }
   }
 
   function aiWarDecisions() {
@@ -568,6 +661,7 @@ G.engine = (function () {
     ns.forEach(function (a) {
       if (a.id === S().player.nation && isLeader()) return;
       if (warsOf(a).length >= 2) return;
+      if (a.born && S().year - a.born < 15) return; // young states are busy stabilising
       // Chance scales with how many years pass this turn (we run yearly so it's per year).
       // War-weary nations (recent wars) rarely start new ones.
       if (a.warYears > 0 || !U.chance(0.03 * a.aggression)) return;
@@ -849,7 +943,7 @@ G.engine = (function () {
     SECTORS: SECTORS, syncSpend: syncSpend, spending: spending, debt: debt, debtRatio: debtRatio, interestRate: interestRate,
     interest: interest, balance: balance, borrowLimit: borrowLimit, projectCost: projectCost,
     milestoneIndex: milestoneIndex, spaceRate: spaceRate, growthParts: growthParts, ceilingPc: ceilingPc, earthFactor: earthFactor,
-    allies: allies, allied: allied, formAlliance: formAlliance, breakAlliance: breakAlliance, blocPower: blocPower, relation: relation, changeRel: changeRel, wars: wars, warsOf: warsOf, atWar: atWar,
+    allies: allies, allied: allied, occupiedBy: occupiedBy, occupation: occupation, resolveIndependence: resolveIndependence, formAlliance: formAlliance, breakAlliance: breakAlliance, blocPower: blocPower, relation: relation, changeRel: changeRel, wars: wars, warsOf: warsOf, atWar: atWar,
     warBetween: warBetween, enemiesOf: enemiesOf, hasPact: hasPact, addPact: addPact, canReach: canReach, rank: rank,
     declareWar: declareWar, endWar: endWar, cede: cede, capitulate: capitulate, addMod: addMod, becomeLeader: becomeLeader,
     killPlayer: killPlayer, successorOptions: successorOptions, applySuccessor: applySuccessor,

@@ -565,6 +565,20 @@ G.ui = (function () {
     }
     h += '</div>';
 
+    // Occupied territories
+    var occ = E.occupiedBy(n);
+    if (occ.length) {
+      h += '<div class="card"><h3>Occupied territories</h3>' +
+        '<div class="small muted" style="margin-bottom:8px">Conquered peoples resist. High unrest leads to regional uprisings and wars of independence. Stable rule over decades integrates them for good.</div>';
+      occ.forEach(function (d) {
+        var o = E.occupation(d);
+        h += '<div style="margin-bottom:10px"><div class="row small"><b><span class="dot" style="background:' + d.color + '"></span>' + esc(d.name) + '</b><span class="muted">held since ' + o.since + '</span></div>' +
+          '<div class="row small"><span>Unrest</span><span class="' + (o.unrest >= 70 ? 'bad' : o.unrest >= 50 ? 'warn' : '') + '">' + Math.round(o.unrest) + (o.unrest >= 70 ? ' · uprising risk!' : '') + '</span></div>' + bar(o.unrest, o.unrest >= 70 ? 'bad' : o.unrest >= 50 ? 'warn' : 'good') +
+          '<div class="row small"><span>Integration</span><span>' + Math.round(o.integ) + '%</span></div>' + bar(o.integ, '') + '</div>';
+      });
+      h += '<div class="small muted">Tip: keep your stability high, use "Pacify occupied lands" or "Grant regional autonomy" (Actions → Politics).</div></div>';
+    }
+
     // Alliances
     var al = E.allies(n);
     h += '<div class="card"><h3>Alliances</h3>' +
@@ -806,7 +820,7 @@ G.ui = (function () {
       var w = me !== n && E.warBetween(me, n), rel = me !== n ? Math.round(E.relation(me, n)) : null;
       h += '<button class="nation-row ' + (n === me ? 'me' : '') + '" data-act="nation" data-arg="' + n.id + '">' +
         '<div class="row"><div><span class="dot" style="background:' + n.color + '"></span><b>' + esc(n.name) + '</b></div>' +
-        '<div>' + (w ? '<span class="tag war">WAR</span>' : '') + (me !== n && E.allied(me, n) ? '<span class="tag pact">ALLY</span>' : '') + (rel !== null ? '<span class="tag ' + (rel > 20 ? 'pact' : rel < -30 ? 'war' : '') + '">' + (rel > 0 ? '+' : '') + rel + '</span>' : '<span class="tag">YOU</span>') + '</div></div>' +
+        '<div>' + (w ? '<span class="tag war">' + (w.independence ? 'UPRISING' : 'WAR') + '</span>' : '') + (n.born && S().year - n.born < 15 ? '<span class="tag">NEW STATE</span>' : '') + (me !== n && E.allied(me, n) ? '<span class="tag pact">ALLY</span>' : '') + (rel !== null ? '<span class="tag ' + (rel > 20 ? 'pact' : rel < -30 ? 'war' : '') + '">' + (rel > 0 ? '+' : '') + rel + '</span>' : '<span class="tag">YOU</span>') + '</div></div>' +
         '<div class="meta">' + E.gov(n).name + ' · Pop ' + U.people(n.pop) + ' · GDP ' + U.money(n.gdp) + ' · Mil ' + U.num(E.power(n)) + ' · 🚀 ' + D.milestones[E.milestoneIndex(n)].name + '</div></button>';
     });
     var dead = Object.keys(S().nations).map(E.nation).filter(function (n) { return !n.alive; });

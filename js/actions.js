@@ -53,6 +53,23 @@ G.actions = (function () {
           'The new order is proclaimed. ' + G.data.govs[g].desc;
       } },
 
+    { id: 'pacify', cat: 'Politics', role: 'leader', name: 'Pacify occupied lands', cost: 0.008,
+      cond: function () { return E.occupiedBy(N()).length > 0; },
+      desc: 'Garrisons, curfews and rebuilding money in conquered territories. Unrest −20 there for now; the people at home grumble.',
+      run: function () {
+        E.occupiedBy(N()).forEach(function (d) { var o = E.occupation(d); o.unrest = Math.max(0, o.unrest - 20); });
+        E.addMod(N(), 'approval', -2, 1);
+        return 'The occupied territories fall quiet. For now.';
+      } },
+    { id: 'autonomy', cat: 'Politics', role: 'leader', name: 'Grant regional autonomy', cost: 0.004,
+      cond: function () { return E.occupiedBy(N()).length > 0; },
+      desc: 'Local parliaments and language rights for conquered peoples. Integration speeds up for 10 years and unrest falls.',
+      run: function () {
+        E.occupiedBy(N()).forEach(function (d) { var o = E.occupation(d); o.integ = Math.min(100, o.integ + 8); o.unrest = Math.max(0, o.unrest - 8); });
+        E.addMod(N(), 'unrest', -10, 10);
+        return 'Conquered peoples gain a voice. Many start to feel at home.';
+      } },
+
     // ----- Leader: Military -----
     { id: 'mobilize', cat: 'Military', role: 'leader', name: 'Call up reserves', cost: 0.01,
       desc: 'Instantly call up reservists: manpower +25% (it drifts back to your conscription level over a few years).',
@@ -89,6 +106,13 @@ G.actions = (function () {
         var mine = w.a === n.id ? w.score : -w.score;
         var years = S().year - w.start;
         var p = U.clamp(0.25 + mine / 120 + years * 0.04, 0.05, 0.95);
+        if (w.independence) {
+          // Peace with rebels: either they lay down arms (if losing) or you recognise their independence.
+          var rebelsScore = w.a === t.id ? w.score : -w.score;
+          if (rebelsScore < -25 && !U.chance(p)) return t.name + ' refuses to surrender. The uprising goes on.';
+          E.resolveIndependence(w, rebelsScore >= -25);
+          return rebelsScore >= -25 ? 'You recognise the independence of ' + t.name + '.' : 'The rebels lay down their arms.';
+        }
         if (U.chance(p)) {
           if (mine > 25) { E.cede(n, t, mine / 100 * 0.15); E.endWar(w, '🕊️ ' + t.name + ' accepts peace and cedes territory to ' + n.name + '.'); return 'Peace with victory. Territory is yours.'; }
           if (mine < -25) { E.cede(t, n, -mine / 100 * 0.15); E.endWar(w, '🕊️ ' + n.name + ' buys peace from ' + t.name + ' by ceding territory.'); return 'Peace, but you had to give up land.'; }
