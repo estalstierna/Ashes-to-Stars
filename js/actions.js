@@ -13,7 +13,7 @@ G.actions = (function () {
     // ----- Leader: Politics -----
     { id: 'propaganda', cat: 'Politics', role: 'leader', name: 'National address', cost: 0.004,
       desc: 'Rally the nation behind your vision. Approval up, popularity up.',
-      run: function () { var n = N(); E.addMod(n, 'approval', 7, 2); P().popularity = U.clamp(P().popularity + 5, 0, 100); return 'The nation listens. Approval is rising.'; } },
+      run: function () { var n = N(); E.addMod(n, 'approval', 7, 2); P().popularity = U.clamp(P().popularity + 5, 0, 100); G.character.change('media', 3); G.character.change('public', 3); return 'The nation listens. Approval is rising.'; } },
     { id: 'reforms', cat: 'Politics', role: 'leader', name: 'Institutional reforms', cost: 0.01,
       desc: 'Strengthen courts, police and bureaucracy. Stability up, slightly unpopular.',
       run: function () { var n = N(); E.addMod(n, 'stability', 10, 4); E.addMod(n, 'approval', -3, 2); P().influence = U.clamp(P().influence + 4, 0, 100); return 'Reforms pass. The state grows sturdier.'; } },
@@ -24,6 +24,7 @@ G.actions = (function () {
         n.stability = U.clamp(n.stability + 12, 0, 100);
         E.addMod(n, 'approval', -8 * k, 3);
         P().popularity = U.clamp(P().popularity - 6 * k, 0, 100);
+        G.character.change('intel', 6); G.character.change('media', -8); G.character.change('public', -5);
         return 'Security forces sweep the streets. Order returns, at a price.';
       } },
     { id: 'purge', cat: 'Politics', role: 'leader', name: 'Purge rivals', cost: 0.005,
@@ -31,6 +32,7 @@ G.actions = (function () {
       desc: 'Remove potential traitors from the inner circle. Influence up, coup risk down.',
       run: function () {
         P().influence = U.clamp(P().influence + 12, 0, 100);
+        G.character.change('intel', 8); G.character.change('military', 4);
         N().stability = U.clamp(N().stability + 5, 0, 100);
         E.addMod(N(), 'approval', -4, 2);
         if (U.chance(0.1)) { E.addMod(N(), 'stability', -10, 2); return 'The purge goes too far. Whispers of tyranny spread in the barracks.'; }
@@ -128,8 +130,8 @@ G.actions = (function () {
 
     // ----- Leader: Science & Space -----
     { id: 'research', cat: 'Science & Space', role: 'leader', name: 'Research grant', cost: 0.02,
-      desc: 'Fund universities and labs. Tech +2.5.',
-      run: function () { N().tech += 2.5; return 'Breakthroughs in fusion, AI and medicine.'; } },
+      desc: 'Fund universities and labs. Tech +2.5 and two years of research points at once.',
+      run: function () { N().tech += 2.5; G.research.boost(N(), 2); return 'Breakthroughs in fusion, AI and medicine.'; } },
     { id: 'mission', cat: 'Science & Space', role: 'leader', name: 'Crash space programme', cost: 0.025,
       desc: 'Pour resources into the next big leap. Space progress +50% for 3 years plus an immediate boost.',
       run: function () {
@@ -183,6 +185,26 @@ G.actions = (function () {
         return t.name + ' refuses to bow. Their people rally against you.';
       } },
 
+    // ----- Power base (everyone; paid from personal wealth) -----
+    { id: 'pb-military', cat: 'Power base', role: 'any', name: 'Court the generals', cost: 3, fac: 'military',
+      desc: 'Dinners at the officers\' club, promotions for friends. Military standing +12.',
+      run: function () { G.character.change('military', U.randInt(10, 14)); return 'The generals raise their glasses to you.'; } },
+    { id: 'pb-business', cat: 'Power base', role: 'any', name: 'Woo the business elite', cost: 10, fac: 'business',
+      desc: 'Galas, board seats and quiet promises. Business standing +12.',
+      run: function () { G.character.change('business', U.randInt(10, 14)); return 'The tycoons now take your calls.'; } },
+    { id: 'pb-media', cat: 'Power base', role: 'any', name: 'Media charm offensive', cost: 6, fac: 'media',
+      desc: 'Exclusive interviews and well-placed leaks. Media standing +12, popularity +3.',
+      run: function () { G.character.change('media', U.randInt(10, 14)); P().popularity = U.clamp(P().popularity + 3, 0, 100); return 'The headlines are kind to you.'; } },
+    { id: 'pb-public', cat: 'Power base', role: 'any', name: 'Tour the country', cost: 2, fac: 'public',
+      desc: 'Town halls, factory floors and refugee camps. Standing with the people +10, popularity +4.',
+      run: function () { G.character.change('public', U.randInt(8, 12)); P().popularity = U.clamp(P().popularity + 4, 0, 100); return 'Ordinary people feel heard.'; } },
+    { id: 'pb-intel', cat: 'Power base', role: 'any', name: 'Cultivate the spies', cost: 5, fac: 'intel',
+      desc: 'Favours for the intelligence chiefs. They will warn you, and dig dirt for you. Intelligence standing +12.',
+      run: function () { G.character.change('intel', U.randInt(10, 14)); return 'Your phone is now the one that is not tapped.'; } },
+    { id: 'pb-patronage', cat: 'Power base', role: 'any', name: 'Build a patronage network', cost: 20,
+      desc: 'Jobs, contracts and favours for loyal people everywhere. Every faction +5.',
+      run: function () { G.character.changeAll(5); return 'Loyal people now sit in every ministry.'; } },
+
     // ----- Personal (non-leaders) -----
     { id: 'network', cat: 'Personal', role: 'any-nonleader', name: 'Work the corridors', cost: 2,
       desc: 'Dinners, favours and back-room deals. Influence +6.',
@@ -211,7 +233,7 @@ G.actions = (function () {
       cond: function () { return !democratic(N()); },
       desc: 'Plot to replace the ruler from inside. Chance depends on influence and instability. Failure is dangerous.',
       run: function () {
-        var n = N(), p = P(), c = U.clamp((p.influence - 30) / 100 + (50 - n.stability) / 150, 0.03, 0.75);
+        var n = N(), p = P(), c = U.clamp((p.influence - 30) / 100 + (50 - n.stability) / 150 + G.character.standing('intel') / 300, 0.03, 0.75);
         if (U.chance(c)) { E.becomeLeader('👑 The plot succeeds! ' + p.name + ' takes power in ' + n.name + '.'); return 'You now rule ' + n.name + '.'; }
         if (U.chance(0.35)) { E.killPlayer('was arrested and executed for treason'); return 'The plot is discovered.'; }
         p.influence = Math.round(p.influence * 0.5); return 'The plot fails. You barely escape with your life and half your allies.';
@@ -235,7 +257,7 @@ G.actions = (function () {
       desc: 'Seize power by force. Chance depends on your influence and the nation\'s instability. Failure means death or prison.',
       run: function () {
         var n = N(), p = P();
-        var c = U.clamp(p.influence / 120 + (55 - n.stability) / 120, 0.03, 0.85);
+        var c = U.clamp(p.influence / 120 + (55 - n.stability) / 120 + G.character.standing('military') / 250, 0.03, 0.85);
         if (U.chance(c)) {
           if (['democracy', 'technocracy', 'corporate'].indexOf(n.gov) >= 0) n.gov = 'junta';
           n.stability = U.clamp(n.stability - 10, 15, 100);
@@ -272,7 +294,8 @@ G.actions = (function () {
       desc: 'Buy the government. Works best in Corporate States; elsewhere you need huge influence.',
       run: function () {
         var n = N(), p = P();
-        var c = n.gov === 'corporate' ? U.clamp(p.influence / 100 + p.wealth / 3000, 0.05, 0.8) : U.clamp((p.influence - 50) / 150 + p.wealth / 10000, 0.02, 0.4);
+        var biz = G.character.standing('business') / 400;
+        var c = n.gov === 'corporate' ? U.clamp(p.influence / 100 + p.wealth / 3000 + biz, 0.05, 0.8) : U.clamp((p.influence - 50) / 150 + p.wealth / 10000 + biz, 0.02, 0.4);
         if (U.chance(c)) {
           if (n.gov !== 'corporate' && U.chance(0.5)) n.gov = 'corporate';
           E.becomeLeader('💼 In a stunning boardroom coup, ' + p.name + ' takes control of ' + n.name + '.');
@@ -293,7 +316,7 @@ G.actions = (function () {
     return list.filter(function (a) {
       if (a.role === 'leader' && p.role !== 'leader') return false;
       if (a.role === 'any-nonleader' && p.role === 'leader') return false;
-      if (a.role !== 'leader' && a.role !== 'any-nonleader' && a.role !== p.role) return false;
+      if (a.role !== 'leader' && a.role !== 'any-nonleader' && a.role !== 'any' && a.role !== p.role) return false;
       if (a.target === 'enemy' && !E.atWar(N())) return false;
       if (a.cond && !a.cond()) return false;
       return true;

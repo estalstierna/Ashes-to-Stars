@@ -183,7 +183,7 @@ G.events = (function () {
       text: 'An assassin\'s drone was intercepted metres from you. Your security chief warns there will be more.',
       choices: [
         { t: 'Tighten security', r: function () { if (L()) tre(-0.004); else wealth(-5); return 'Armoured cars and body doubles. You feel safer.'; } },
-        { t: 'Show no fear', r: function () { pop(6); if (U.chance(0.15)) { E.killPlayer('was killed by an assassin'); return 'The next attempt does not miss.'; } return 'Your courage inspires the nation.'; } }
+        { t: 'Show no fear', r: function () { pop(6); if (U.chance(0.15 * (1 - G.character.standing('intel') / 150))) { E.killPlayer('was killed by an assassin'); return 'The next attempt does not miss.'; } return 'Your courage inspires the nation.'; } }
       ] },
     { id: 'scandal', w: 2,
       title: 'Scandal!',

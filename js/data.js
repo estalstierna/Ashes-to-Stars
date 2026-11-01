@@ -95,9 +95,9 @@ G.data = (function () {
     { name: 'Jovian Settlements',      points: 3000,   ceil: 1.45, desc: 'Habitats on Europa and Ganymede.' },
     { name: 'Titan Industrial Zone',   points: 6000,   ceil: 1.6,  desc: 'Hydrocarbon refineries and cities on Titan.' },
     { name: 'Dyson Swarm (Phase I)',   points: 12000,  ceil: 2.0,  desc: 'Solar collectors in orbit around the Sun.' },
-    { name: 'Interstellar Probe',      points: 40000,  ceil: 2.2,  desc: 'The first human-made craft sent to another star.' },
-    { name: 'First Exoplanet Colony',  points: 90000,  ceil: 2.6,  desc: 'Humanity lives under an alien sun.' },
-    { name: 'Kardashev II: Space God', points: 200000, ceil: 3.5,  desc: 'Your civilisation commands the full energy of a star.' }
+    { name: 'Interstellar Probe',      points: 60000,  ceil: 2.2,  desc: 'The first human-made craft sent to another star.' },
+    { name: 'First Exoplanet Colony',  points: 150000, ceil: 2.6,  desc: 'Humanity lives under an alien sun.' },
+    { name: 'Kardashev II: Space God', points: 350000, ceil: 3.5,  desc: 'Your civilisation commands the full energy of a star.' }
   ];
 
   var roles = {

@@ -80,12 +80,12 @@ G.engine = (function () {
   function earthFactor() { return 0.6 + S().earth / 250; }
   function ceilingPc(n) {
     // GDP per capita ceiling in thousands of dollars.
-    return n.tech * 1.3 * D.milestones[milestoneIndex(n)].ceil * earthFactor();
+    return n.tech * 1.3 * D.milestones[milestoneIndex(n)].ceil * earthFactor() * (1 + G.research.bonus(n, 'ceiling'));
   }
   // Space points per year: share of GDP spent on space, scaled sub-linearly by economy size and by tech.
   function spaceRate(n) {
     var f = funds(n);
-    return (f.space / n.gdp) * Math.pow(n.gdp, 0.3) * Math.pow(n.tech / 80, 0.8) * SPACE_K;
+    return (f.space / n.gdp) * Math.pow(n.gdp, 0.3) * Math.pow(n.tech / 80, 0.8) * SPACE_K * (1 + G.research.bonus(n, 'space'));
   }
   function worldPop() { return alive().reduce(function (a, n) { return a + n.pop; }, 0); }
   function modSum(n, type) {
@@ -194,6 +194,7 @@ G.engine = (function () {
     if (opts.role === 'general') { p.influence = 30; p.popularity = 20; p.wealth = 6; }
     if (opts.role === 'corporate') { p.influence = 20; p.popularity = 15; p.wealth = 250; p.company = G.names.company(); }
     s.player = p;
+    G.character.ensure(p);
     if (p.role === 'leader') n.lastElection = 2077;
 
     G.territory.init();
@@ -224,7 +225,7 @@ G.engine = (function () {
 
     // Population with a soft global carrying capacity raised by space colonies.
     var cap = 9000 * earthFactor() + alive().reduce(function (a, x) { return a + Math.max(0, milestoneIndex(x) - 3) * 400; }, 0);
-    var popG = (0.004 + welR * 0.12 + modSum(n, 'pop')) * Math.max(-0.5, 1 - worldPop() / cap);
+    var popG = (0.004 + welR * 0.12 + modSum(n, 'pop') + G.research.bonus(n, 'pop')) * Math.max(-0.5, 1 - worldPop() / cap);
     if (war) popG -= 0.004;
     n.pop = Math.max(0.5, n.pop * (1 + popG));
 
@@ -233,6 +234,8 @@ G.engine = (function () {
     // Diminishing returns: each new tech level is harder to reach.
     var techDamp = 100 / (100 + Math.max(0, n.tech - 80) * 0.6);
     n.tech += sciR * 35 * g.sci * techDamp + (maxTech - n.tech) * 0.01 + modSum(n, 'tech');
+    // Research points go into discoveries (the player picks them when ruling).
+    G.research.simulate(n, !(isPlayerNation && isLeader()));
 
     // Space programme.
     var before = milestoneIndex(n);
@@ -247,14 +250,14 @@ G.engine = (function () {
     var dr = debtRatio(n);
 
     // Approval and stability.
-    var apT = 50 + (growth - 0.02) * 400 + welR * 250 - n.warYears * 2 - (n.tax - 0.2) * 120 + modSum(n, 'approval') - G.military.conscApprovalPenalty(n);
+    var apT = 50 + (growth - 0.02) * 400 + welR * 250 - n.warYears * 2 - (n.tax - 0.2) * 120 + modSum(n, 'approval') - G.military.conscApprovalPenalty(n) + G.research.bonus(n, 'approval');
     if (n.gov === 'junta') apT += milR * 150;
     apT = U.clamp(apT, 5, 95);
     n.approval = U.clamp(n.approval + (apT - n.approval) * 0.25, 0, 100);
     // Empires are hard to hold: each conquered nation weighs on stability.
     var held = 0, all = S().nations;
     for (var hid in all) if (!all[hid].alive && all[hid].annexedBy === n.id) held++;
-    var stT = 28 + n.approval * 0.5 + g.stab - held * 4 - Math.max(0, dr - 0.9) * 15 - (war ? 6 : 0) + modSum(n, 'stability') + (n.gov === 'junta' ? milR * 200 : 0);
+    var stT = 28 + n.approval * 0.5 + g.stab - held * 4 - Math.max(0, dr - 0.9) * 15 - (war ? 6 : 0) + modSum(n, 'stability') + (n.gov === 'junta' ? milR * 200 : 0) + G.research.bonus(n, 'stability');
     stT = U.clamp(stT, 5, 98);
     n.stability = U.clamp(n.stability + (stT - n.stability) * 0.2, 0, 100);
     if (war) n.warYears++; else n.warYears = Math.max(0, n.warYears - 2);
@@ -296,6 +299,7 @@ G.engine = (function () {
     var parts = [
       ['Catching up to potential', 0.05 * (1 - pc / ceil)],
       ['Economy budget (investment)', f.econ / n.gdp * 0.5],
+      ['Technology (discoveries)', G.research.bonus(n, 'growth')],
       ['Projects, trade & events', modSum(n, 'growth')],
       ['War', atWar(n) ? -0.025 : 0],
       ['Conscription (lost workforce)', -G.military.conscGrowthPenalty(n)],
@@ -532,7 +536,10 @@ G.engine = (function () {
     Object.keys(ns).forEach(function (id) {
       var d = ns[id], owner = d.annexedBy && ns[d.annexedBy];
       if (d.alive || !owner || !owner.alive) return;
-      if (owner.stability > 50 || !U.chance(0.02 + (50 - owner.stability) * 0.002)) return;
+      // Big empires are restless: every nation held adds pressure, even under a stable regime.
+      var held = Object.keys(ns).filter(function (k) { return !ns[k].alive && ns[k].annexedBy === owner.id; }).length;
+      var unrest = 50 + held * 4;
+      if (owner.stability > unrest || !U.chance(0.02 + (unrest - owner.stability) * 0.002)) return;
       var frac = U.clamp(d.pop / (owner.pop + d.pop), 0.05, 0.3);
       d.alive = true;
       d.pop = owner.pop * frac; d.gdp = owner.gdp * frac;
@@ -581,7 +588,7 @@ G.engine = (function () {
     alive().forEach(function (n) {
       if (!n.leader) return;
       n.leader.age++;
-      var died = U.chance(mortality(n.leader.age, n.tech));
+      var died = U.chance(mortality(n.leader.age, n.tech, G.research.bonus(n, 'life')));
       var couped = n.stability < 22 && U.chance(0.08);
       var elected = gov(n).elections && S().year - n.lastElection >= 4;
       if (n.id === S().player.nation && elected) return; // handled in player politics
@@ -603,9 +610,9 @@ G.engine = (function () {
     });
   }
 
-  function mortality(age, tech) {
-    // Medicine improves with technology, pushing the curve later.
-    var shift = Math.max(0, (tech - 85) * 0.25);
+  function mortality(age, tech, life) {
+    // Medicine improves with technology (and longevity research), pushing the curve later.
+    var shift = Math.max(0, (tech - 85) * 0.25) + (life || 0);
     return Math.min(0.6, 0.0004 * Math.exp(0.09 * (age - 30 - shift)));
   }
 
@@ -615,7 +622,7 @@ G.engine = (function () {
     if (g.elections && s.year - n.lastElection >= 4) {
       n.lastElection = s.year;
       if (p.role === 'leader') {
-        var score = (n.approval - 50) * 0.09 + (p.popularity - 40) * 0.03 + (p.influence - 40) * 0.015;
+        var score = (n.approval - 50) * 0.09 + (p.popularity - 40) * 0.03 + (p.influence - 40) * 0.015 + (G.character.standing('public') - 40) * 0.015;
         if (U.chance(U.sigmoid(score + 0.3))) {
           log('🗳️ You win re-election as ' + title(n) + ' of ' + n.name + '!', 'player');
           p.popularity = Math.min(100, p.popularity + 5);
@@ -631,7 +638,7 @@ G.engine = (function () {
           s.succession = { reason: 'election', text: 'You lost the election. You can fight on as leader of the opposition, or hand your legacy to an heir.' };
         }
       } else if (p.candidate) {
-        var sc = (p.popularity - (n.leader ? n.approval : 50)) * 0.07 + (p.influence - 35) * 0.04;
+        var sc = (p.popularity - (n.leader ? n.approval : 50)) * 0.07 + (p.influence - 35) * 0.04 + (G.character.standing('public') - 40) * 0.02;
         p.candidate = false;
         if (U.chance(U.sigmoid(sc))) {
           becomeLeader('🗳️ You win the election! ' + p.name + ' is the new ' + title(n) + ' of ' + n.name + '.');
@@ -650,7 +657,7 @@ G.engine = (function () {
     }
     // Coup risk for the player as leader.
     if (p.role === 'leader' && n.stability < 25) {
-      var risk = (25 - n.stability) * 0.006 * (1 - p.influence / 200);
+      var risk = (25 - n.stability) * 0.006 * (1 - p.influence / 200) * (1 - G.character.standing('military') / 150);
       if (U.chance(risk)) {
         log('💥 Coup! Your own generals storm the palace. Your rule is over.', 'player');
         n.leader = makeLeader(n);
@@ -681,8 +688,9 @@ G.engine = (function () {
     var p = S().player;
     p.age++;
     if (p.role === 'corporate') p.wealth *= 1 + U.clamp(pn().growth || 0.02, -0.1, 0.1) + 0.03;
-    if (U.chance(mortality(p.age, pn().tech))) killPlayer('died at age ' + p.age);
-    p.influence = U.clamp(p.influence - 0.5, 0, 100);
+    if (U.chance(mortality(p.age, pn().tech, G.research.bonus(pn(), 'life')))) killPlayer('died at age ' + p.age);
+    // Power base: faction standings fade or grow, influence follows them, income arrives.
+    G.character.year();
     if (p.role === 'leader') p.popularity += (pn().approval - p.popularity) * 0.3;
   }
 
@@ -723,6 +731,7 @@ G.engine = (function () {
       generation: p.generation + 1, dynasty: o.kind === 'heir' ? p.dynasty : o.name.split(' ').slice(-1)[0],
       candidate: false, heirBonus: 0, since: s.year, legacy: p.legacy, company: p.company
     };
+    newP.fac = G.character.inherit(p, o.role, o.kind);
     s.player = newP;
     if (o.role === 'leader') { n.leader = null; newP.since = s.year; }
     else if (!n.leader) n.leader = makeLeader(n);
@@ -750,7 +759,10 @@ G.engine = (function () {
       aiLeaders();
       playerPolitics();
       if (!s.succession || !s.succession.dead) playerAging();
-      s.earth = U.clamp(s.earth + 0.15 + (s.wars.length === 0 ? 0.1 : 0), 0, 100);
+      // Environmental discoveries heal the Earth, weighted by how big each economy is.
+      var wg = alive().reduce(function (a, x) { return a + x.gdp; }, 0);
+      var heal = alive().reduce(function (a, x) { return a + G.research.bonus(x, 'earth') * U.clamp(x.gdp / wg * 5, 0.1, 1); }, 0);
+      s.earth = U.clamp(s.earth + 0.15 + (s.wars.length === 0 ? 0.1 : 0) + heal, 0, 100);
       s.pacts = s.pacts.filter(function (p) { return p.until >= s.year; });
       recordHistory();
       if (s.succession) break; // stop to let the player resolve succession

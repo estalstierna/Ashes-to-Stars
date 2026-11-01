@@ -81,7 +81,7 @@ G.military = (function () {
   }
   // Cost of paying soldiers, in billions per year.
   function personnelCost(n) { return n.mil.men * (n.gdp / n.pop) * 0.4 / 1000; }
-  function quality(n) { return (1 + n.tech / 50) * (1 + (n.mil.bonus.quality || 0)); }
+  function quality(n) { return (1 + n.tech / 50) * (1 + (n.mil.bonus.quality || 0)) * (1 + G.research.bonus(n, 'mil')); }
   function branchStrength(n, b) { return n.mil.eq[b] * BRANCH_WEIGHT[b] * (1 + (n.mil.bonus[b] || 0)); }
   function equipment(n) { return BRANCHES.reduce(function (a, b) { return a + n.mil.eq[b]; }, 0); }
   function effectiveEquipment(n) { return BRANCHES.reduce(function (a, b) { return a + branchStrength(n, b); }, 0); }
