@@ -1,0 +1,16 @@
+{
+  "name": "ashes-to-stars",
+  "version": "0.2.0",
+  "private": true,
+  "description": "A text-based grand strategy RPG set after the Long War of 2062-2077.",
+  "scripts": {
+    "test": "npm run test:sim && npm run test:events",
+    "test:sim": "node tests/sim.js 6 3000",
+    "test:events": "node tests/events.js",
+    "test:ui": "node tests/ui-smoke.js /tmp/shots && node tests/ui-flows.js",
+    "test:all": "npm test && npm run test:ui"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

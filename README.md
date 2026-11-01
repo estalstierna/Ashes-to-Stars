@@ -72,7 +72,9 @@ To install it on a phone, open the URL and choose **Share → Add to Home Screen
 | `js/actions.js` | Everything the player can do, per role |
 | `js/events.js` | Procedural events and the event queue |
 | `js/events-extra.js` | More events, plus yearly world news |
-| `js/ui.js` | Screens and interface |
+| `js/ui/kit.js` | Shared UI helpers: modals, toasts, event delegation, shared view state |
+| `js/ui/main.js` | Title screen, character creation, the frame around the tabs, turn flow, events and succession |
+| `js/ui/home.js`, `actions.js`, `economy.js`, `military.js`, `world.js`, `science.js`, `news.js` | One file per tab |
 | `js/names.js` | Procedural name generator, organised by culture |
 | `js/mapdata.js` | Generated map provinces (from `tools/build-map.js`) |
 | `js/territory.js` | Province ownership: cessions, annexations and rebellions on the map |
@@ -81,10 +83,12 @@ To install it on a phone, open the URL and choose **Share → Add to Home Screen
 ## Tests
 
 ```
-node tests/sim.js 10 3000     # plays 10 full random games to year 3000; checks for crashes/NaN and prints balance data
-node tests/events.js                # runs every choice of every event in several situations
-node tests/ui-smoke.js /tmp/shots   # mobile browser smoke test with screenshots (needs Playwright)
+npm test            # simulation (6 full games to year 3000) + every event choice
+npm run test:ui     # mobile browser tests: smoke test + UI flows (needs Playwright + Chromium)
+npm run test:all    # everything
 ```
+
+GitHub Actions runs all of them on every push (`.github/workflows/test.yml`).
 
 ## Rebuilding the map
 
