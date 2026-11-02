@@ -76,7 +76,7 @@
     NRD: {
       capital: 'Copenhagen', founded: 2071, motto: 'Five crosses, one north',
       story: 'The Nordic states joined the European Federation at its founding, but the war turned the Arctic into a front line. Brussels wanted conscription quotas and Arctic bases on Nordic soil. In 2071 Denmark, Sweden, Norway and Finland walked out together and signed the Treaty of Kalmar, reviving an old dream of a union of the North. They share a parliament in Copenhagen, an army and the world\'s richest sovereign fund. They are small, wealthy, highly educated and stubbornly independent, and they insist that twenty million people can still lead the world.',
-      past: [[2062, 'Joined the war as EU members'], [2064, 'Founding members of the European Federation'], [2066, 'Finnish front held against Russia at Lappeenranta'], [2071, 'Left the European Federation; the Treaty of Kalmar founded the Nordic Confederation'], [2073, 'Norwegian sovereign fund merged into the Nordic Fund'], [2075, 'Opened the Andøya and Kiruna launch sites']]
+      past: [[2062, 'Denmark, Sweden, Norway and Finland entered the Long War as EU members'], [2064, 'The four Nordic states became founding members of the European Federation'], [2066, 'Finnish troops held the front against Russia at Lappeenranta'], [2071, 'Left the European Federation; the Treaty of Kalmar founded the Nordic Confederation'], [2073, 'Norwegian sovereign fund merged into the Nordic Fund'], [2075, 'Opened the Andøya and Kiruna launch sites']]
     },
     SGP: {
       capital: 'Singapore', founded: 1965, motto: 'Onward, neutral, open',

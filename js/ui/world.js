@@ -308,14 +308,17 @@
   function historyHTML(n) {
     var L = G.lore[n.id] || {}, items = [];
     (L.past || []).forEach(function (p) { items.push({ y: p[0], t: p[1] }); });
-    (n.chron || []).forEach(function (c) { items.push(c); });
-    items.sort(function (a, b) { return b.y - a.y; });
+    // The founding year is a timeline entry like any other, unless the backstory already marks that year.
+    if (L.founded && !(L.past || []).some(function (p) { return p[0] === L.founded; })) items.push({ y: L.founded, t: 'Founded' });
+    (n.chron || []).forEach(function (c) { items.push({ y: c.y, t: c.t }); });
+    items.forEach(function (c, i) { c._i = i; });
+    items.sort(function (a, b) { return b.y - a.y || b._i - a._i; });
     var h = L.story ? '<p class="small" style="line-height:1.5;margin-top:12px">' + esc(L.story) + '</p>' : '';
     h += '<h3 style="margin-top:14px">Timeline</h3>';
     if (!items.length) return h + '<p class="small muted">Nothing recorded yet.</p>';
     return h + '<div class="timeline">' + items.map(function (c) {
       return '<div class="tl-row' + (c.y < 2077 ? ' past' : '') + '"><span class="tl-year">' + c.y + '</span><span class="tl-text">' + esc(c.t) + '</span></div>';
-    }).join('') + (L.founded ? '<div class="tl-row past"><span class="tl-year">' + L.founded + '</span><span class="tl-text">Founded</span></div>' : '') + '</div>';
+    }).join('') + '</div>';
   }
 
   on('nation', function (arg) {
