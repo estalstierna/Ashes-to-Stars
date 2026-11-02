@@ -10,7 +10,7 @@ G.space = (function () {
   // unlock: space milestone index required. cost: founding cost as a share of GDP.
   // yields per colony level: space points, research points, growth.
   var BODIES = [
-    { id: 'moon', name: 'The Moon', icon: '🌕', unlock: 1, cost: 0.01, space: 1.5, rp: 2, econ: 0.0008, orbit: 0, distance: '384,400 km from Earth',
+    { id: 'moon', name: 'The Moon', icon: '🌕', unlock: 2, cost: 0.01, space: 1.5, rp: 2, econ: 0.0008, orbit: 0, distance: '384,400 km from Earth',
       gravity: '0.17 g', day: '29.5 Earth days', temp: '−173 to +127 °C',
       resources: 'Water ice in polar craters, helium-3 for fusion reactors, regolith for 3D-printed habitats.',
       lore: [
@@ -18,7 +18,7 @@ G.space = (function () {
         'China followed with Shackleton Outpost on the opposite rim in 2072. The two bases are three kilometres apart and officially do not speak to each other.',
         'The far side is a radio-quiet sanctuary. Whoever builds the great observatory there will hear the universe more clearly than anyone on Earth.'
       ] },
-    { id: 'mars', name: 'Mars', icon: '🔴', unlock: 3, cost: 0.02, space: 2.5, rp: 3, econ: 0.001, orbit: 2, distance: '55–400 million km (months by chemical rocket)',
+    { id: 'mars', name: 'Mars', icon: '🔴', unlock: 4, cost: 0.02, space: 2.5, rp: 3, econ: 0.001, orbit: 2, distance: '55–400 million km (months by chemical rocket)',
       gravity: '0.38 g', day: '24 h 37 min', temp: 'average −63 °C',
       resources: 'Subsurface ice, iron-rich soil, CO₂ atmosphere for fuel. A whole planet to terraform, given centuries.',
       lore: ['The red planet has been humanity\'s dream for two centuries. Its colonists will be the first humans who never see Earth\'s sky.', 'Dust storms can cover the whole planet for months. Domes must be self-sufficient.'] },

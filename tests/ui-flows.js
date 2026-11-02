@@ -182,7 +182,11 @@ async function endTurn(page) {
     const lvl = await page.evaluate(() => G.space.of(G.engine.pn())[0].level);
     await page.click('[data-act=colexpand]');
     check(await page.evaluate(() => G.space.of(G.engine.pn())[0].level) === lvl + 1, 'a colony can be expanded');
-    await page.evaluate(() => { G.engine.pn().space = 400; G.ui.render(); }); // Mars unlocked
+    await page.evaluate(() => { G.engine.pn().space = 400; G.ui.render(); }); // Mars Landing: no colony yet
+    await page.locator('#sys-map [data-body=mars] circle').first().dispatchEvent('click');
+    check(await page.$('#modal [data-act=colfound]') === null && (await page.textContent('#modal-box')).includes('Mars Colony'), 'Mars Landing alone does not allow a colony');
+    await page.click('#modal [data-act=close]');
+    await page.evaluate(() => { G.engine.pn().space = 750; G.ui.render(); }); // Mars Colony unlocked
     await page.locator('#sys-map [data-body=mars] circle').first().dispatchEvent('click');
     await page.click('#modal [data-act=colfound]');
     check(await page.evaluate(() => G.space.of(G.engine.pn()).some(c => c.body === 'mars')), 'a colony can be founded on Mars');

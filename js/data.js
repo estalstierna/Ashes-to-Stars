@@ -87,9 +87,9 @@ G.data = (function () {
   // ceil = multiplier on the GDP-per-capita ceiling, techBoost one-time tech gain.
   var milestones = [
     { name: 'Orbital Stations',        points: 0,      ceil: 1.0,  desc: 'Low-orbit stations and satellites.' },
-    { name: 'Lunar Outpost',           points: 50,     ceil: 1.02, desc: 'A permanent crewed base on the Moon.' },
+    { name: 'Lunar Outpost',           points: 50,     ceil: 1.02, desc: 'A permanent crewed research base on the Moon.' },
     { name: 'Lunar Colony',            points: 150,    ceil: 1.05, desc: 'A self-sustaining settlement on the Moon.' },
-    { name: 'Mars Landing',            points: 320,    ceil: 1.07, desc: 'Human boots on Mars.' },
+    { name: 'Mars Landing',            points: 320,    ceil: 1.07, desc: 'Human boots on Mars. Short research expeditions, not yet a home.' },
     { name: 'Mars Colony',             points: 700,    ceil: 1.12, desc: 'A growing city under Martian domes.' },
     { name: 'Asteroid Mining',         points: 1400,   ceil: 1.3,  desc: 'Industrial mining of the asteroid belt. Raw materials flood the economy.' },
     { name: 'Jovian Settlements',      points: 3000,   ceil: 1.45, desc: 'Habitats on Europa and Ganymede.' },

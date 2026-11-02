@@ -69,7 +69,7 @@
         '<div class="row small"><span>Self-rule movement</span><span class="' + (c.autonomy >= 70 ? 'bad' : c.autonomy >= 40 ? 'warn' : '') + '">' + Math.round(c.autonomy) + '%</span></div>' + bar(c.autonomy, c.autonomy >= 70 ? 'bad' : c.autonomy >= 40 ? 'warn' : 'good') +
         (lead && c.level < SP.LEVELS.length ? '<button class="btn sm ' + (can ? 'blue' : '') + '" data-act="colexpand" data-arg="' + c.id + '" ' + (can ? '' : 'disabled') + '>' +
           (can ? 'Expand to ' + SP.LEVELS[c.level].toLowerCase() + ' · ' + U.money(cost) : 'Can expand in ' + Math.max(1, 5 - (s.year - c.grew)) + ' yr') + '</button>' : '') + '</div>';
-    }).join('') : '<div class="small muted">No colonies yet. ' + (mi >= 1 ? 'Tap the Moon on the map to found one.' : 'Reach a Lunar Outpost (space milestone) to found your first colony.') + '</div>') +
+    }).join('') : '<div class="small muted">No colonies yet. ' + (mi >= 2 ? 'Tap the Moon on the map to found one.' : 'Reach Lunar Colony (space milestone) to found your first colony.') + '</div>') +
       '<div class="small muted" style="margin-top:6px">Colonies add space progress, research points and economic growth every year. Big, distant colonies drift towards independence; a stable homeland slows that down.</div></div>';
 
     // Space race milestones
@@ -79,6 +79,7 @@
       h += '<div class="ms ' + (i <= mi ? 'done' : i === mi + 1 ? 'next' : '') + '"><div class="n">' + (i <= mi ? '✓' : i) + '</div><div>' +
         '<div><b>' + m.name + '</b> <span class="small muted">' + U.num(m.points) + ' pts</span></div>' +
         '<div class="small muted">' + esc(m.desc) + '</div>' +
+        (function () { var bs = SP.BODIES.filter(function (b) { return b.unlock === i; }); return bs.length ? '<div class="small good">🏗️ Unlocks colonies on ' + bs.map(function (b) { return b.icon + ' ' + esc(b.name); }).join(', ') + '</div>' : ''; })() +
         (f ? '<div class="small warn">First: ' + esc(E.nation(f.nation).short) + ' (' + f.year + ')</div>' : '') + '</div></div>';
     });
     h += '</div><div class="card"><h3>Leaderboard</h3>';
