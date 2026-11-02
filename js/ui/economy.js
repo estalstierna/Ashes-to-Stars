@@ -68,7 +68,7 @@
   function refreshBudget() {
     var n = E.pn(), f = E.funds(n);
     E.SECTORS.forEach(function (k) { var b = $('sf-' + k); if (b) b.textContent = '−' + U.money(f[k]); });
-    var sum = $('budget-sum'); if (sum) sum.innerHTML = budgetSummary(n);
+    var sum = $('budget-sum'); if (sum) sum.innerHTML = K.tidy(budgetSummary(n));
   }
 
 

@@ -153,7 +153,7 @@
     var n = E.pn(); n.mil.consc = +v / 100;
     $('cv').textContent = (+v).toFixed(1) + '%';
     $('ct').textContent = menStr(M.targetMen(n)) + ' target';
-    $('consc-fx').innerHTML = conscEffects(n);
+    $('consc-fx').innerHTML = K.tidy(conscEffects(n));
     E.save();
   });
   on('branch', function (v, el) {

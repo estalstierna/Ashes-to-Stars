@@ -12,7 +12,8 @@ G.ui = (function () {
     closeModal();
     var cont = E.hasSave() && E.load();
     app.innerHTML =
-      '<div class="title-screen">' +
+      '<div class="title-screen"><div class="stars"></div><div class="stars far"></div>' +
+      '<div class="logo-kicker">A grand strategy chronicle · 2077–3000</div>' +
       '<div class="logo">ASHES<br>TO <span>STARS</span></div>' +
       '<div class="tagline">2077. The Long War is over. A third of humanity is gone.<br>Rebuild the world, or burn it again, and reach for the stars.</div>' +
       (cont ? '<button class="btn primary" data-act="continue">Continue: ' + esc(S().player.name) + ', ' + S().year + '</button>' : '') +
@@ -68,7 +69,7 @@ G.ui = (function () {
       '<label class="field">Nation</label>' +
       nations.map(function (n) {
         return '<button class="choice ' + (c.nation === n.id ? 'sel' : '') + '" data-act="pnation" data-arg="' + n.id + '">' +
-          '<div class="row"><div class="t"><span class="dot" style="background:' + n.color + '"></span>' + esc(n.name) + '</div><span class="tag">' + n.tier + '</span></div>' +
+          '<div class="row"><div class="t">' + G.flags.svg(n, 'mini') + esc(n.name) + '</div><span class="tag">' + n.tier + '</span></div>' +
           '<div class="d">' + D.govs[n.gov].name + ' · Pop ' + U.people(n.pop) + ' · GDP ' + U.money(n.gdp) + '</div>' +
           (c.nation === n.id ? '<div class="d" style="color:#c9d2e0;margin-top:6px">' + esc(n.desc) + '</div>' : '') +
           '</button>';
@@ -85,7 +86,7 @@ G.ui = (function () {
       }).join('') +
       '<button class="btn primary" data-act="start" ' + (c.name.trim() && c.nation && c.role ? '' : 'disabled') + '>Begin in 2077</button>' +
       '</div>';
-    app.innerHTML = html;
+    app.innerHTML = K.tidy(html);
   }
   on('cname', function (v) {
     create.name = v;
@@ -122,19 +123,22 @@ G.ui = (function () {
     var yrs = E.yearsPerTurn(s.year);
     var head = '<div class="topbar"><div class="row"><div><div class="year">' + s.year + '</div>' +
       '<div class="era">' + E.era(s.year) + ' · ' + (yrs === 1 ? '1 year' : yrs + ' years') + ' per turn</div></div>' +
-      '<div class="row"><span class="tag">⚡ ' + s.ap + ' action' + (s.ap === 1 ? '' : 's') + '</span><button class="icon-btn" data-act="menu">☰</button></div></div></div>';
+      '<div class="row"><span class="ap-pill' + (s.ap ? '' : ' empty') + '">' + K.icon('bolt') + s.ap + ' action' + (s.ap === 1 ? '' : 's') + '</span><button class="icon-btn" data-act="menu" aria-label="Menu">' + K.icon('menu') + '</button></div></div></div>';
     var t = K.tabs[view.tab] || K.tabs.home;
     var body = t.render();
     var tabs = TABS;
-    app.innerHTML = '<div class="page">' + head + body + '</div>' +
+    var entering = lastTab !== view.tab;
+    lastTab = view.tab;
+    app.innerHTML = K.tidy('<div class="page' + (entering ? ' enter' : '') + '">' + head + body + '</div>' +
       '<div class="bottom"><div class="bottom-inner">' +
-      '<button class="btn primary endturn" data-act="endturn">End Turn ▸ ' + (s.year + yrs) + '</button>' +
+      '<button class="btn primary endturn" data-act="endturn"><span>End turn</span><span class="et-year">' + (s.year + yrs) + ' →</span></button>' +
       '<div class="tabs">' + tabs.map(function (x) {
-        return '<button class="' + (view.tab === x[0] ? 'on' : '') + '" data-act="tab" data-arg="' + x[0] + '"><span class="i">' + x[1] + '</span>' + x[2] + '</button>';
-      }).join('') + '</div></div></div>';
+        return '<button class="' + (view.tab === x[0] ? 'on' : '') + '" data-act="tab" data-arg="' + x[0] + '">' + K.icon(x[1], 'i') + '<span>' + x[2] + '</span></button>';
+      }).join('') + '</div></div></div>');
     if (t.after) t.after();
   }
-  var TABS = [['home', '🏛️', 'Home'], ['act', '⚡', 'Actions'], ['econ', '💰', 'Economy'], ['mil', '🎖️', 'Military'], ['world', '🌍', 'World'], ['sci', '🔬', 'Science'], ['space', '🚀', 'Space'], ['log', '📰', 'News']];
+  var TABS = [['home', 'home', 'Home'], ['act', 'bolt', 'Actions'], ['econ', 'coin', 'Economy'], ['mil', 'rank', 'Military'], ['world', 'globe', 'World'], ['sci', 'flask', 'Science'], ['space', 'rocket', 'Space'], ['log', 'news', 'News']];
+  var lastTab = null;
   on('tab', function (t) { K.view.tab = t; render(); window.scrollTo(0, 0); });
 
   // ---------- menu ----------
@@ -184,10 +188,23 @@ G.ui = (function () {
   on('warngo', function (t) { closeModal(); K.view.tab = t; if (t === 'sci') K.view.sci = 'research'; render(); window.scrollTo(0, 0); });
   on('endturn-force', function () { closeModal(); doEndTurn(); });
   function doEndTurn() {
+    var from = S().year;
     E.endTurn();
     render();
     window.scrollTo(0, 0);
+    yearSweep(from, S().year);
     showSummary();
+  }
+  // A brief, non-blocking flourish as the calendar advances.
+  function yearSweep(from, to) {
+    var old = document.getElementById('year-sweep');
+    if (old) old.remove();
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var el = document.createElement('div');
+    el.id = 'year-sweep';
+    el.innerHTML = '<div class="ys-from">' + from + '</div><div class="ys-to">' + to + '</div>';
+    document.body.appendChild(el);
+    setTimeout(function () { el.remove(); }, 1100);
   }
 
   function showSummary() {

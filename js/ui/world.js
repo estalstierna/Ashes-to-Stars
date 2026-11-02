@@ -69,7 +69,7 @@
       if (!p) return;
       var atWar = E.atWar(n);
       if (n.id === 'SGP') regions += '<circle data-nation="SGP" class="map-dot" cx="' + p[0] + '" cy="' + p[1] + '" r="3" fill="' + (mapMode === 'diplomacy' ? diploColor(n) : n.color) + '" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"/>';
-      labels += '<text class="map-label' + (n === me ? ' me' : '') + '" data-nation="' + n.id + '" data-pri="' + pri + '" x="' + p[0] + '" y="' + p[1] + '" dy="' + (n.id === 'SGP' ? '-1em' : 0) + '">' + (atWar ? '⚔️ ' : '') + esc(n.short) + '</text>';
+      labels += '<text class="map-label' + (n === me ? ' me' : '') + (atWar ? ' atwar' : '') + '" data-nation="' + n.id + '" data-pri="' + pri + '" x="' + p[0] + '" y="' + p[1] + '" dy="' + (n.id === 'SGP' ? '-1em' : 0) + '">' + esc(n.short) + '</text>';
     });
     // Conquered land away from the owner's own label gets its own name, e.g. "West China / USA-held".
     var nAlive = E.alive().length;
@@ -92,7 +92,7 @@
       '<rect x="0" y="0" width="' + MAP.w + '" height="' + MAP.h + '" fill="#3a2f26" opacity="' + ash + '"/>' +
       '<path d="' + MAP.unclaimed + '" fill="#000" fill-opacity="0.15" stroke="#9aa4b2" stroke-opacity="0.35" stroke-width="0.6" vector-effect="non-scaling-stroke"/>' +
       '<g id="map-regions">' + regions + '</g><g id="map-labels">' + labels + '</g></svg>' +
-      '<div class="map-zoom"><button data-act="mapzoom" data-arg="in">+</button><button data-act="mapzoom" data-arg="out">−</button><button data-act="mapzoom" data-arg="home">⌂</button></div>' +
+      '<div class="map-zoom"><button data-act="mapzoom" data-arg="in">+</button><button data-act="mapzoom" data-arg="out">−</button><button data-act="mapzoom" data-arg="home" aria-label="Recentre">' + K.icon('target') + '</button></div>' +
       '</div>' +
       '<div class="seg map-modes">' + [['political', 'Nations'], ['terrain', 'Terrain'], ['diplomacy', 'Diplomacy']].map(function (m) {
         return '<button class="' + (mapMode === m[0] ? 'sel' : '') + '" data-act="mapmode" data-arg="' + m[0] + '">' + m[1] + '</button>';
