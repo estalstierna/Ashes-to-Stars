@@ -27,7 +27,7 @@ G.uiKit = (function () {
     alert: 'M12 3.5 21.5 20h-19zM12 10v4.5M12 17.3v.2',
     doc: 'M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7',
     flag: 'M5 21V4M5 4h12l-2.5 4L17 12H5',
-    orbit: 'M12 10a2 2 0 1 0 0 4 2 2 0 1 0 0-4zM2.5 12c0-2.2 4.3-4 9.5-4s9.5 1.8 9.5 4-4.3 4-9.5 4-9.5-1.8-9.5-4z',
+    orbit: 'M12 8a4 4 0 1 0 0 8 4 4 0 1 0 0-8zM6.2 15.6C3.4 16.9 2 17.2 2.4 15.6c.5-2 4.8-5 9.6-6.6s8.6-1.5 9.6-.6c.8.7-.6 2-3.4 3.6',
     people: 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 1 0 0 7zM2.5 20c0-3.4 2.9-6 6.5-6s6.5 2.6 6.5 6M16 4.4a3.5 3.5 0 0 1 0 6.3M18 14.2c2.2.7 3.5 2.9 3.5 5.8',
     person: 'M12 12a4 4 0 1 0 0-8 4 4 0 1 0 0 8zM4.5 21c0-4 3.4-7 7.5-7s7.5 3 7.5 7',
     case: 'M3 7.5h18V20H3zM8.5 7.5V4.5h7v3M3 12.5h18',
@@ -41,7 +41,15 @@ G.uiKit = (function () {
     tv: 'M3 6h18v12H3zM8 21h8M9 2.5 12 6l3-3.5',
     fire: 'M12 21.5c-4 0-6.5-2.6-6.5-6 0-4.5 4.5-6.5 4.5-11 2.5 1.5 4 3.6 4 6 1-.6 1.6-1.6 2-3 1.8 2 2.5 4.3 2.5 7 0 4-2.5 7-6.5 7z',
     check: 'M5 12.5 10 17.5 19.5 7',
-    target: 'M12 4.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 1 0 0-15zM12 2v5M12 17v5M2 12h5M17 12h5'
+    target: 'M12 4.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 1 0 0-15zM12 2v5M12 17v5M2 12h5M17 12h5',
+    anchor: 'M12 7.5a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 1 0 0 4.4zM12 7.5V21M8 11h8M4.5 13.5c0 4.2 3.4 7.5 7.5 7.5s7.5-3.3 7.5-7.5M3 15l1.5-1.5L6 15M18 15l1.5-1.5L21 15',
+    plane: 'M10.5 21l1.5-1 1.5 1v-2.2L12 17.6V13l8 3.2v-2.1l-8-5.4V4.5a1 1 0 0 0-2 0 1 1 0 0 0 0 0V8.7l-8 5.4v2.1L10 13v4.6l-1.5 1.2z',
+    satellite: 'M9.2 9.2l5.6 5.6M13.5 6.5l4 4-3 3-4-4zM4 3.5l4 4-2.5 2.5-4-4zM14.5 14.5l4 4-2.5 2.5-4-4zM8 7.5l2-2M14 16l2-2M18 21a3 3 0 0 0 3-3M18 23.5a5.5 5.5 0 0 0 5.5-5.5',
+    chip: 'M7 7h10v10H7zM10 10h4v4h-4zM9.5 4v3M14.5 4v3M9.5 17v3M14.5 17v3M4 9.5h3M4 14.5h3M17 9.5h3M17 14.5h3',
+    cap: 'M2 9l10-4.5L22 9l-10 4.5zM6 11v4.5c0 1.5 2.7 3 6 3s6-1.5 6-3V11M22 9v5.5',
+    map: 'M3 6.5l6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5zM9 4v13.5M15 6.5V20',
+    scale: 'M12 3.5v17M7 20.5h10M5 7h14M5 7l-3 6.5a3 3 0 0 0 6 0zM19 7l-3 6.5a3 3 0 0 0 6 0zM12 3.5l-1 1.5h2z',
+    cross: 'M9 3.5h6v5.5h5.5v6H15v5.5H9V15H3.5V9H9z'
   };
   function icon(name, cls) {
     var d = ICONS[name];
@@ -52,10 +60,10 @@ G.uiKit = (function () {
   var EMOJI_ICON = {
     '🏛': 'home', '⚡': 'bolt', '💰': 'coin', '💸': 'coin', '🏦': 'coin', '🎖': 'rank', '🪖': 'rank', '🌍': 'globe', '🌐': 'globe', '🔬': 'flask', '🧬': 'flask',
     '🚀': 'rocket', '📰': 'news', '📺': 'tv', '⚔': 'swords', '🤝': 'link', '🛡': 'shield', '🔒': 'lock', '🗳': 'ballot', '⚠': 'alert',
-    '📜': 'doc', '🕊': 'flag', '🏳': 'flag', '🏴': 'flag', '🛰': 'orbit', '👥': 'people', '👤': 'person', '🕴': 'person', '💼': 'case', '👑': 'crown',
+    '📜': 'doc', '🕊': 'flag', '🏳': 'flag', '🏴': 'flag', '🛰': 'satellite', '⚓': 'anchor', '✈': 'plane', '💻': 'chip', '🎓': 'cap', '🗺': 'map', '⚖': 'scale', '🏥': 'cross', '👥': 'people', '👤': 'person', '🕴': 'person', '💼': 'case', '👑': 'crown',
     '🏗': 'build', '🏭': 'build', '📉': 'chart', '🌱': 'leaf', '🌾': 'leaf', '🤖': 'gear', '🕵': 'eye', '🔥': 'fire', '💥': 'fire'
   };
-  var EMOJI_RE = /(?:[\u{1F300}-\u{1FAFF}]|[\u2600-\u26FF\u2700-\u27BF\u2B50](?=\uFE0F)|[\u26A0-\u26FF\u2694\u2696\u26B0\u26D3\u26CF\u2622\u2600\u270A\u2708\u26AB\u26A1])\uFE0F?(?:\u200D[\s\S]\uFE0F?)*\s?/gu;
+  var EMOJI_RE = /(?:[\u{1F300}-\u{1FAFF}]|[\u2600-\u26FF\u2700-\u27BF\u2B50](?=\uFE0F)|[\u26A0-\u26FF\u2693\u2694\u2696\u26B0\u26D3\u26CF\u2622\u2600\u270A\u2708\u26AB\u26A1])\uFE0F?(?:\u200D[\s\S]\uFE0F?)*\s?/gu;
   function swapEmoji(text, inSvg) {
     return text.replace(EMOJI_RE, function (m) {
       var key = String.fromCodePoint(m.codePointAt(0)), name = EMOJI_ICON[key];
