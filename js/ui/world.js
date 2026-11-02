@@ -71,6 +71,18 @@
       if (n.id === 'SGP') regions += '<circle data-nation="SGP" class="map-dot" cx="' + p[0] + '" cy="' + p[1] + '" r="3" fill="' + (mapMode === 'diplomacy' ? diploColor(n) : n.color) + '" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"/>';
       labels += '<text class="map-label' + (n === me ? ' me' : '') + '" data-nation="' + n.id + '" data-pri="' + pri + '" x="' + p[0] + '" y="' + p[1] + '" dy="' + (n.id === 'SGP' ? '-1em' : 0) + '">' + (atWar ? '⚔️ ' : '') + esc(n.short) + '</text>';
     });
+    // Conquered land away from the owner's own label gets its own name, e.g. "West China / USA-held".
+    var nAlive = E.alive().length;
+    G.territory.heldRegions().sort(function (a, b) { return b.w - a.w; }).forEach(function (r, i) {
+      var o = E.nation(r.owner), orig = E.nation(r.orig);
+      if (!o || !orig) return;
+      var main, sub;
+      if (r.dir) { main = r.dir + ' ' + orig.short; sub = o.short + '-held'; }
+      else if (!orig.alive) { main = o.short; sub = 'former ' + orig.short; }
+      else { main = orig.short; sub = o.short + '-held'; }
+      labels += '<text class="map-label region' + (o === me ? ' me' : '') + '" data-nation="' + o.id + '" data-pri="' + (nAlive + i) + '" x="' + r.at[0] + '" y="' + r.at[1] + '">' +
+        '<tspan x="' + r.at[0] + '" dy="-0.45em">' + esc(main) + '</tspan><tspan class="sub" x="' + r.at[0] + '" dy="1.15em">' + esc(sub) + '</tspan></text>';
+    });
     return '<div class="map-wrap" id="map-wrap">' +
       '<svg id="world-map" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">' +
       '<defs><filter id="map-edge" x="-5%" y="-5%" width="110%" height="110%"><feMorphology id="map-erode" in="SourceAlpha" operator="erode" radius="1"/>' +

@@ -74,6 +74,21 @@ async function endTurn(page) {
     check(errors.length === 0, 'no page errors ' + errors.join('; '));
   }
 
+  console.log('Held regions on the map');
+  {
+    const { page, errors } = await newGame(browser, 'CHN', 'leader');
+    const names = await page.evaluate(() => {
+      const T = G.territory, E = G.engine;
+      T.transfer(T.owned('CHN').sort((a, b) => G.mapdata.provinces[a].c[0] - G.mapdata.provinces[b].c[0]).slice(0, 12), 'USA');
+      E.annex(E.nation('RUS'), E.nation('SIB'));
+      G.uiKit.view.tab = 'world'; G.ui.render();
+      return Array.from(document.querySelectorAll('.map-label.region')).map(t => t.textContent);
+    });
+    check(names.some(t => /China/.test(t) && /USA-held/.test(t)), 'part of China held by the USA is labelled (' + names.join(', ') + ')');
+    check(names.includes('Russiaformer Siberia') && !names.some(t => /Siberia.*Russia-held/.test(t)), 'a fully annexed nation is labelled once, as its new owner');
+    check(errors.length === 0, 'no page errors ' + errors.join('; '));
+  }
+
   console.log('Treaties and calls to arms');
   {
     const { page, errors } = await newGame(browser, 'SWE', 'leader');

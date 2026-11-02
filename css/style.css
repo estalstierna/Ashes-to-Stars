@@ -143,6 +143,9 @@ label.field { display: block; margin: 16px 0 6px; font-size: 13px; color: var(--
 .map-label { font-size: var(--fs, 12px); font-weight: 700; fill: #fff; text-anchor: middle; dominant-baseline: middle;
   paint-order: stroke; stroke: rgba(0, 0, 0, .75); stroke-width: var(--sw, 3px); stroke-linejoin: round; cursor: pointer; }
 .map-label.me { fill: #ffd166; }
+.map-label.region { font-size: calc(var(--fs, 12px) * 0.9); font-style: italic; }
+.map-label .sub { font-size: 0.78em; font-weight: 600; fill: #cfd6e2; font-style: normal; }
+.map-label.me .sub { fill: #ffe3a3; }
 .map-zoom { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 6px; }
 .map-zoom button { width: 36px; height: 36px; border-radius: 10px; background: rgba(19, 26, 38, .85); border: 1px solid var(--line); font-size: 18px; color: var(--text); }
 .map-modes { margin-bottom: 6px; }

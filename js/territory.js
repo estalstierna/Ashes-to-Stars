@@ -149,5 +149,56 @@ G.territory = (function () {
     return weightOf(owned(id)) / all;
   }
 
-  return { init: init, owned: owned, center: center, cede: cede, annex: annex, restore: restore, uprising: uprising, homeShare: homeShare, landShare: landShare, bordering: bordering, shareOf: shareOf, transfer: transfer, frontCandidate: frontCandidate, enabled: enabled };
+  // Land held outside a nation's own homeland, grouped into connected regions per original
+  // nation, with a readable name: "West China" for a part, "China" for (almost) all of it.
+  var DIRS = ['East', 'Southeast', 'South', 'Southwest', 'West', 'Northwest', 'North', 'Northeast'];
+  function heldRegions() {
+    if (!enabled()) return [];
+    var prov = S().prov, list = P(), home = {}, seen = {}, out = [];
+    list.forEach(function (p) {
+      var h = home[p.n] = home[p.n] || { w: 0, x: 0, y: 0, minX: 1e9, maxX: -1e9, minY: 1e9, maxY: -1e9 };
+      h.w += p.w; h.x += p.c[0] * p.w; h.y += p.c[1] * p.w;
+      h.minX = Math.min(h.minX, p.c[0]); h.maxX = Math.max(h.maxX, p.c[0]); h.minY = Math.min(h.minY, p.c[1]); h.maxY = Math.max(h.maxY, p.c[1]);
+    });
+    prov.forEach(function (owner, i) {
+      var orig = list[i].n;
+      if (!owner || owner === orig || seen[i]) return;
+      // Flood fill over neighbouring provinces with the same owner and the same original nation.
+      var stack = [i], cl = [];
+      seen[i] = true;
+      while (stack.length) {
+        var k = stack.pop(); cl.push(k);
+        list[k].a.forEach(function (j) { if (!seen[j] && prov[j] === owner && list[j].n === orig) { seen[j] = true; stack.push(j); } });
+      }
+      var h = home[orig], W = weightOf(cl);
+      if (W < 4 && W < h.w * 0.25) return; // too small to name
+      var X = 0, Y = 0;
+      cl.forEach(function (k) { X += list[k].c[0] * list[k].w; Y += list[k].c[1] * list[k].w; });
+      X /= W; Y /= W;
+      var best = cl[0], bd = 1e9;
+      cl.forEach(function (k) { var c = list[k].c, d = Math.hypot(c[0] - X, c[1] - Y) / Math.sqrt(list[k].w + 1); if (d < bd) { bd = d; best = k; } });
+      var share = W / h.w, dir = '';
+      if (share < 0.85) {
+        var hx = h.x / h.w, hy = h.y / h.w;
+        var dx = (X - hx) / Math.max(20, h.maxX - h.minX), dy = (Y - hy) / Math.max(20, h.maxY - h.minY);
+        if (Math.hypot(dx, dy) < 0.12) dir = 'Central';
+        else dir = DIRS[(Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8];
+      }
+      out.push({ owner: owner, orig: orig, provs: cl, w: W, share: share, dir: dir, at: list[best].c });
+    });
+    // If an owner holds (almost) all of a nation, name only its biggest piece, after the whole nation.
+    var tot = {};
+    out.forEach(function (r) { var k = r.owner + '|' + r.orig; tot[k] = (tot[k] || 0) + r.share; });
+    out.sort(function (a, b) { return b.w - a.w; });
+    var named = {};
+    return out.filter(function (r) {
+      var k = r.owner + '|' + r.orig;
+      if (tot[k] < 0.85) return true;
+      if (named[k]) return false;
+      named[k] = true; r.dir = '';
+      return true;
+    });
+  }
+
+  return { heldRegions: heldRegions, init: init, owned: owned, center: center, cede: cede, annex: annex, restore: restore, uprising: uprising, homeShare: homeShare, landShare: landShare, bordering: bordering, shareOf: shareOf, transfer: transfer, frontCandidate: frontCandidate, enabled: enabled };
 })();
