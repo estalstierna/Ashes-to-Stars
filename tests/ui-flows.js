@@ -233,10 +233,10 @@ async function endTurn(page) {
     const { page, errors } = await newGame(browser, 'USA', 'leader');
     await page.click('[data-act=homeview][data-arg=cabinet]');
     check(await page.$('[data-act=cabreplace][data-arg=finance]'), 'cabinet shows five posts');
-    const before = await page.evaluate(() => G.state.cabinet.finance.name);
+    const before = await page.evaluate(() => G.state.cabinet.finance.id);
     await page.click('[data-act=cabreplace][data-arg=finance]');
     await page.click('#modal [data-act=cabappoint]');
-    check(await page.evaluate(() => G.state.cabinet.finance.name) !== before, 'a minister can be replaced');
+    check(await page.evaluate(() => G.state.cabinet.finance.id) !== before, 'a minister can be replaced');
     const r = await page.evaluate(() => ({ id: G.state.rivals[0].id, power: G.state.rivals[0].power }));
     await page.click('[data-act=rivalact][data-arg="rival-discredit|' + r.id + '"]');
     check(await page.evaluate(id => (G.state.rivals.find(x => x.id === id) || { power: 0 }).power, r.id) < r.power, 'discrediting a rival lowers their power');

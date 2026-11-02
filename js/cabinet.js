@@ -177,7 +177,19 @@ G.cabinet = (function () {
     var s = S(), n = E().pn(), key = post + ':' + s.year;
     s.candidates = s.candidates || {};
     for (var k in s.candidates) if (k.split(':')[1] !== String(s.year)) delete s.candidates[k];
-    if (!s.candidates[key]) s.candidates[key] = [minister(n, post), minister(n, post), minister(n, post)];
+    if (!s.candidates[key]) {
+      // Candidates never share a name with each other, a sitting minister, a rival or you.
+      var taken = [S().player.name];
+      POST_IDS.forEach(function (p) { if (s.cabinet && s.cabinet[p]) taken.push(s.cabinet[p].name); });
+      (s.rivals || []).forEach(function (r) { taken.push(r.name); });
+      var list = [];
+      for (var i = 0; i < 3; i++) {
+        var m, tries = 0;
+        do { m = minister(n, post); } while (taken.indexOf(m.name) >= 0 && ++tries < 12);
+        taken.push(m.name); list.push(m);
+      }
+      s.candidates[key] = list;
+    }
     return s.candidates[key];
   }
   function appoint(post, candId) {
