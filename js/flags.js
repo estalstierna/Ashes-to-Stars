@@ -117,7 +117,11 @@
     '<rect x=".15" y=".15" width="29.7" height="19.7" fill="none" stroke="#000" stroke-opacity=".25" stroke-width=".3"/>';
 
   G.flags = {
+    // Painted flags (img/flags/<id>.jpg) for the starting nations; drawn SVG for anything else.
+    IMAGES: ['USA', 'EF', 'RUS', 'CHN', 'IND', 'PAC', 'PAU', 'SAC', 'TUR', 'GULF', 'MESO', 'AUS', 'CAS', 'SIB', 'NRD', 'SGP'],
     svg: function (n, cls) {
+      if (G.flags.IMAGES.indexOf(n.id) >= 0)
+        return '<img class="flag ' + (cls || '') + '" src="img/flags/' + n.id + '.jpg" alt="Flag of ' + n.name.replace(/"/g, '') + '" draggable="false">';
       var body = FLAGS[n.id] ? FLAGS[n.id]() : generic(n);
       return '<svg class="flag ' + (cls || '') + '" viewBox="0 0 30 20" preserveAspectRatio="none" aria-label="Flag of ' + n.name.replace(/"/g, '') + '">' + SHADE + body + OVER + '</svg>';
     }

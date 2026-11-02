@@ -259,7 +259,7 @@ label.field { display: block; margin: 18px 0 7px; font-size: 10.5px; color: var(
 .sys-label.locked { fill: #8b97ab; font-weight: 500; }
 
 /* Flags & nation history */
-.flag { display: inline-block; border-radius: 2px; box-shadow: 0 0 0 1px rgba(255,255,255,.15); vertical-align: middle; }
+.flag { display: inline-block; object-fit: cover; -webkit-user-drag: none; user-select: none; border-radius: 2px; box-shadow: 0 0 0 1px rgba(255,255,255,.15); vertical-align: middle; }
 .flag.mini { width: 21px; height: 14px; margin-right: 8px; position: relative; top: -1px; border-radius: 1.5px; box-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 1px 3px rgba(0,0,0,.5); }
 .flag-hero { position: relative; display: inline-block; margin: -2px 0 14px; border-radius: 3px; overflow: hidden;
   box-shadow: 0 0 0 1px rgba(255,255,255,.14), 0 10px 26px rgba(0,0,0,.5); animation: flagIn .6s var(--ease) both; }

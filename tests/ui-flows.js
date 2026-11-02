@@ -61,10 +61,13 @@ async function endTurn(page) {
     const { page, errors } = await newGame(browser, 'NRD', 'leader');
     for (let i = 0; i < 4; i++) await endTurn(page);
     await page.evaluate(() => { G.engine.declareWar(G.engine.nation('RUS'), G.engine.nation('CAS')); G.uiKit.view.tab = 'world'; G.ui.render(); });
-    const flags = await page.$$eval('.nation-row svg.flag', a => a.length);
+    const flags = await page.$$eval('.nation-row .flag', a => a.length);
+    await page.waitForFunction(() => Array.from(document.querySelectorAll('.nation-row img.flag')).every(i => i.complete));
+    const broken = await page.$$eval('.nation-row img.flag', a => a.filter(i => !i.naturalWidth).map(i => i.src));
+    check(broken.length === 0, 'all flag images load ' + broken.join(', '));
     check(flags >= 16, 'every nation row has a flag (' + flags + ')');
     await page.evaluate(() => document.querySelector('.nation-row[data-arg=CAS]').dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    check(await page.$('#modal .flag-hero svg.flag') !== null, 'nation modal shows a large flag');
+    check(await page.$('#modal .flag-hero .flag') !== null, 'nation modal shows a large flag');
     await page.click('#modal [data-act=nation][data-arg="CAS|history"]');
     const hist = await page.$eval('#modal', m => m.textContent);
     check(hist.includes('Seattle') && hist.includes('Seceded from the United States') && hist.includes('Attacked by Russian Federation'), 'history shows capital, backstory events and the chronicle');
