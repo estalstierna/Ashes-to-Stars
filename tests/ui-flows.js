@@ -56,6 +56,24 @@ async function endTurn(page) {
     check(errors.length === 0, 'no page errors ' + errors.join('; '));
   }
 
+  console.log('Nation flags and history');
+  {
+    const { page, errors } = await newGame(browser, 'SWE', 'leader');
+    for (let i = 0; i < 4; i++) await endTurn(page);
+    await page.evaluate(() => { G.engine.declareWar(G.engine.nation('RUS'), G.engine.nation('CAS')); G.uiKit.view.tab = 'world'; G.ui.render(); });
+    const flags = await page.$$eval('.nation-row svg.flag', a => a.length);
+    check(flags >= 16, 'every nation row has a flag (' + flags + ')');
+    await page.evaluate(() => document.querySelector('.nation-row[data-arg=CAS]').dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    check(await page.$('#modal .flag-hero svg.flag') !== null, 'nation modal shows a large flag');
+    await page.click('#modal [data-act=nation][data-arg="CAS|history"]');
+    const hist = await page.$eval('#modal', m => m.textContent);
+    check(hist.includes('Seattle') && hist.includes('Seceded from the United States') && hist.includes('Attacked by Russian Federation'), 'history shows capital, backstory events and the chronicle');
+    await page.screenshot({ path: (process.env.SHOTS || '/tmp') + '/nation-history.png' });
+    await page.click('#modal [data-act=nation][data-arg="CAS|info"]');
+    check((await page.$eval('#modal', m => m.textContent)).includes('Relations with you'), 'overview tab returns');
+    check(errors.length === 0, 'no page errors ' + errors.join('; '));
+  }
+
   console.log('Treaties and calls to arms');
   {
     const { page, errors } = await newGame(browser, 'SWE', 'leader');

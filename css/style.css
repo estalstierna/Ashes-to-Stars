@@ -170,3 +170,15 @@ label.field { display: block; margin: 16px 0 6px; font-size: 13px; color: var(--
 .sys-label.locked { fill: #8b97ab; font-weight: 500; }
 .tabs button { font-size: 9.5px; }
 .tabs button .i { font-size: 18px; }
+
+/* Flags & nation history */
+.flag { display: inline-block; border-radius: 2px; box-shadow: 0 0 0 1px rgba(255,255,255,.15); vertical-align: middle; }
+.flag.mini { width: 21px; height: 14px; margin-right: 7px; position: relative; top: -1px; }
+.flag-hero { margin: -2px 0 12px; }
+.flag-hero .flag { width: 120px; height: 80px; border-radius: 4px; box-shadow: 0 0 0 1px rgba(255,255,255,.18), 0 6px 18px rgba(0,0,0,.45); }
+.timeline { border-left: 2px solid rgba(255,255,255,.12); margin: 6px 0 14px 4px; padding-left: 12px; }
+.tl-row { display: flex; gap: 10px; font-size: 13px; padding: 5px 0; position: relative; line-height: 1.35; }
+.tl-row::before { content: ''; position: absolute; left: -17px; top: 10px; width: 8px; height: 8px; border-radius: 50%; background: #4f8cff; }
+.tl-row.past::before { background: #6b7280; }
+.tl-row.past .tl-text { color: #9aa3b2; }
+.tl-year { font-weight: 700; min-width: 38px; font-variant-numeric: tabular-nums; }

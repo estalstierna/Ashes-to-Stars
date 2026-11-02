@@ -1,8 +1,8 @@
 // Offline cache. Bump VERSION when files change so phones pick up updates.
-var VERSION = 'ats-v20';
+var VERSION = 'ats-v21';
 var FILES = [
   './', './index.html', './css/style.css', './manifest.webmanifest',
-  './js/util.js', './js/names.js', './js/data.js', './js/engine.js', './js/military.js', './js/research.js', './js/laws.js', './js/character.js', './js/mapdata.js', './js/territory.js', './js/actions.js', './js/events.js', './js/events-extra.js', './js/war.js', './js/space.js', './js/cabinet.js', './js/ui/kit.js', './js/ui/home.js', './js/ui/government.js', './js/ui/actions.js', './js/ui/economy.js', './js/ui/military.js', './js/ui/world.js', './js/ui/science.js', './js/ui/space.js', './js/ui/news.js', './js/ui/main.js',
+  './js/util.js', './js/names.js', './js/data.js', './js/lore.js', './js/flags.js', './js/engine.js', './js/military.js', './js/research.js', './js/laws.js', './js/character.js', './js/mapdata.js', './js/territory.js', './js/actions.js', './js/events.js', './js/events-extra.js', './js/war.js', './js/space.js', './js/cabinet.js', './js/ui/kit.js', './js/ui/home.js', './js/ui/government.js', './js/ui/actions.js', './js/ui/economy.js', './js/ui/military.js', './js/ui/world.js', './js/ui/science.js', './js/ui/space.js', './js/ui/news.js', './js/ui/main.js',
   './img/earth.jpg', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'
 ];
 self.addEventListener('install', function (e) {

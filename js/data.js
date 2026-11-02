@@ -76,7 +76,7 @@ G.data = (function () {
     { id: 'SWE', name: 'Republic of Sweden', short: 'Sweden', color: '#3d9bd6', gov: 'democracy', title: 'Prime Minister', culture: 'nordic', tier: 'Small Nation',
       pop: 9, gdp: 680, tech: 80, space: 4, stability: 60, approval: 56, tax: 0.3, aggression: 0.15, armyMult: 0.7,
       alloc: A(18, 26, 28, 18, 10), neighbors: ['EF', 'RUS'],
-      desc: 'Left the European Federation in 2071 after the war ended. Small, smart and stubborn. Could it become the world leader in everything?' },
+      desc: 'Left the European Federation in 2071. Small, smart and stubborn. Could it become the world leader in everything?' },
     { id: 'SGP', name: 'Free City of Singapore', short: 'Singapore', color: '#ff6b81', gov: 'corporate', culture: 'chinese', tier: 'City-State',
       pop: 6, gdp: 880, tech: 86, space: 3, stability: 62, approval: 56, tax: 0.18, aggression: 0.1, armyMult: 0.7,
       alloc: A(18, 34, 16, 20, 12), neighbors: ['IND', 'AUS'],

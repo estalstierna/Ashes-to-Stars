@@ -260,7 +260,7 @@
     list.forEach(function (n) {
       var w = me !== n && E.warBetween(me, n), rel = me !== n ? Math.round(E.relation(me, n)) : null;
       h += '<button class="nation-row ' + (n === me ? 'me' : '') + '" data-act="nation" data-arg="' + n.id + '">' +
-        '<div class="row"><div><span class="dot" style="background:' + n.color + '"></span><b>' + esc(n.name) + '</b></div>' +
+        '<div class="row"><div>' + G.flags.svg(n, 'mini') + '<b>' + esc(n.name) + '</b></div>' +
         '<div>' + (w ? '<span class="tag war">' + (w.independence ? 'UPRISING' : 'WAR') + '</span>' : '') + (n.born && S().year - n.born < 15 ? '<span class="tag">NEW STATE</span>' : '') + (me !== n && E.allied(me, n) ? '<span class="tag pact">' + (E.allianceType(me, n) === 'alliance' ? 'ALLY' : 'DEF. PACT') + '</span>' : '') + (rel !== null ? '<span class="tag ' + (rel > 20 ? 'pact' : rel < -30 ? 'war' : '') + '">' + (rel > 0 ? '+' : '') + rel + '</span>' : '<span class="tag">YOU</span>') + '</div></div>' +
         '<div class="meta">' + E.gov(n).name + ' · Pop ' + U.people(n.pop) + ' · GDP ' + U.money(n.gdp) + ' · Mil ' + U.num(E.power(n)) + ' · 🚀 ' + D.milestones[E.milestoneIndex(n)].name + '</div></button>';
     });
@@ -268,12 +268,40 @@
     if (dead.length) h += '<p class="small muted">Fallen nations: ' + dead.map(function (n) { return esc(n.name); }).join(', ') + '</p>';
     return h;
   }
-  on('nation', function (id) {
-    var n = E.nation(id), me = E.pn(), self = n === me;
+  // Everything we know about a nation's past: founding, pre-2077 events and the game's chronicle.
+  function historyHTML(n) {
+    var L = G.lore[n.id] || {}, items = [];
+    (L.past || []).forEach(function (p) { items.push({ y: p[0], t: p[1] }); });
+    (n.chron || []).forEach(function (c) { items.push(c); });
+    items.sort(function (a, b) { return b.y - a.y; });
+    var h = L.story ? '<p class="small" style="line-height:1.5;margin-top:12px">' + esc(L.story) + '</p>' : '';
+    h += '<h3 style="margin-top:14px">Timeline</h3>';
+    if (!items.length) return h + '<p class="small muted">Nothing recorded yet.</p>';
+    return h + '<div class="timeline">' + items.map(function (c) {
+      return '<div class="tl-row' + (c.y < 2077 ? ' past' : '') + '"><span class="tl-year">' + c.y + '</span><span class="tl-text">' + esc(c.t) + '</span></div>';
+    }).join('') + (L.founded ? '<div class="tl-row past"><span class="tl-year">' + L.founded + '</span><span class="tl-text">Founded</span></div>' : '') + '</div>';
+  }
+
+  on('nation', function (arg) {
+    var parts = String(arg).split('|'), id = parts[0], tab = parts[1] || 'info';
+    var n = E.nation(id), me = E.pn(), self = n === me, L = G.lore[n.id] || {};
     var wars = E.warsOf(n).map(function (w) { return E.nation(w.a === n.id ? w.b : w.a).short; });
     var pacts = S().pacts.filter(function (p) { return p.a === n.id || p.b === n.id; }).map(function (p) { return (PACT_NAMES[p.type] || p.type) + ' with ' + E.nation(p.a === n.id ? p.b : p.a).short; });
-    var html = '<div class="kicker">' + esc(n.tier) + '</div><h2><span class="dot" style="background:' + n.color + '"></span>' + esc(n.name) + '</h2>' +
-      '<p class="muted small">' + esc(n.desc) + '</p>' +
+    var gdpRank = E.alive().slice().sort(function (a, b) { return b.gdp - a.gdp; }).indexOf(n) + 1;
+    var html = '<div class="flag-hero">' + G.flags.svg(n) + '</div>' +
+      '<div class="kicker">' + esc(n.tier) + (n.alive ? ' · #' + gdpRank + ' economy' : ' · fallen') + '</div><h2 style="margin-bottom:2px">' + esc(n.name) + '</h2>' +
+      (L.motto ? '<p class="small muted" style="margin:0 0 8px;font-style:italic">“' + esc(L.motto) + '”</p>' : '') +
+      '<div class="seg" style="margin:8px 0 12px">' + [['info', 'Overview'], ['history', 'History']].map(function (x) {
+        return '<button class="' + (tab === x[0] ? 'sel' : '') + '" data-act="nation" data-arg="' + n.id + '|' + x[0] + '">' + x[1] + '</button>';
+      }).join('') + '</div>';
+    if (tab === 'history') {
+      html += '<div class="grid2">' + stat('Capital', esc(L.capital || '—')) + stat('Founded', L.founded || (n.born || '—')) +
+        stat('Wars fought', n.warsFought || 0) + stat(E.title(n), esc(E.leaderName(n) || '—')) + '</div>' + historyHTML(n);
+      html += '<button class="btn" data-act="close">Close</button>';
+      modal(html);
+      return;
+    }
+    html += '<p class="muted small">' + esc(n.desc) + '</p>' +
       '<div class="grid2">' + stat('Government', E.gov(n).name) + stat('Leader', n.leader ? esc(n.leader.name) : esc(S().player.name)) +
       stat('Population', U.people(n.pop)) + stat('GDP', U.money(n.gdp)) + stat('Military', U.num(E.power(n))) + stat('Tech', n.tech.toFixed(1)) +
       stat('Stability', Math.round(n.stability)) + stat('Space', D.milestones[E.milestoneIndex(n)].name) +

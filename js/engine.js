@@ -82,6 +82,31 @@ G.engine = (function () {
     if (s.turnNews) s.turnNews.push({ text: text, type: type || 'world' });
   }
 
+  // Per-nation chronicle shown in the nation's history.
+  function chron(n, text) {
+    if (!n) return;
+    n.chron = n.chron || [];
+    var y = S().year;
+    if (n.chron.some(function (c) { return c.y === y && c.t === text; })) return;
+    n.chron.push({ y: y, t: text });
+    if (n.chron.length > 60) n.chron.splice(0, n.chron.length - 60);
+  }
+  function leaderName(n) {
+    var p = S().player;
+    return n.leader ? n.leader.name : (p.nation === n.id && p.role === 'leader' ? p.name : '');
+  }
+  // Notice leader and government changes, however they happened.
+  function chronYear() {
+    Object.keys(S().nations).forEach(function (id) {
+      var n = S().nations[id];
+      if (!n.alive) return;
+      var ln = leaderName(n);
+      if (n._cg && n._cg !== n.gov) chron(n, 'Government changed to ' + D.govs[n.gov].name);
+      if (n._cl && ln && n._cl !== ln) chron(n, ln + ' became ' + title(n));
+      n._cg = n.gov; if (ln) n._cl = ln;
+    });
+  }
+
   function yearsPerTurn(year) {
     if (year < 2150) return 1;
     if (year < 2400) return 5;
@@ -258,6 +283,7 @@ G.engine = (function () {
 
     G.territory.init();
     if (G.space) G.space.init();
+    chronYear();
     recordHistory();
     log('The Treaty of Reykjavík ends the Long War. One in three humans is gone. The rebuilding begins.', 'major');
     log(p.name + ' begins their story as ' + roleTitle() + ' of ' + n.name + '.', 'player');
@@ -315,6 +341,7 @@ G.engine = (function () {
       n.stability = Math.max(0, n.stability - 15);
       addMod(n, 'approval', -10, 3); addMod(n, 'growth', -0.03, 3);
       alive().forEach(function (o) { if (o !== n) changeRelOneWay(o, n, -10); });
+      chron(n, 'Defaulted on its national debt');
       log('💸 ' + n.name + ' defaults on its national debt! Markets crash and the world loses trust.', ownedByPlayer(n) ? 'player' : 'major');
       dr = debtRatio(n);
     } else if (dr > 1.5 && ownedByPlayer(n) && !n.debtWarned) {
@@ -355,6 +382,7 @@ G.engine = (function () {
       var m = D.milestones[i];
       var first = !s.firsts[i];
       if (first) s.firsts[i] = { nation: n.id, year: s.year };
+      chron(n, 'Achieved ' + m.name + (first ? ', the first nation in history' : ''));
       n.tech += 1;
       if (first) {
         addMod(n, 'approval', 10, 3);
@@ -416,6 +444,8 @@ G.engine = (function () {
     breakAlliance(a, b);
     S().pacts.push({ a: a.id, b: b.id, type: type, until: 999999 });
     changeRel(a, b, type === 'alliance' ? 10 : 6);
+    var what = type === 'alliance' ? 'Formed an alliance with ' : 'Signed a defensive pact with ';
+    chron(a, what + b.name); chron(b, what + a.name);
   }
   function breakAlliance(a, b) {
     S().pacts = S().pacts.filter(function (p) { return !(ALLY_KINDS[p.type] && ((p.a === a.id && p.b === b.id) || (p.a === b.id && p.b === a.id))); });
@@ -452,6 +482,7 @@ G.engine = (function () {
         if (a.id < b.id) changeRel(a, b, 1.5); // allies grow closer over time
         if (relation(a, b) < -10 && !isPlayer(a) && !isPlayer(b)) {
           breakAlliance(a, b);
+          chron(a, 'Alliance with ' + b.name + ' collapsed'); chron(b, 'Alliance with ' + a.name + ' collapsed');
           log('💔 The alliance between ' + a.name + ' and ' + b.name + ' collapses.', a.id === pid || b.id === pid ? 'player' : 'world');
         } else if (allianceType(a, b) === 'defensive' && relation(a, b) > 65 && !isPlayer(a) && !isPlayer(b) && a.id < b.id && U.chance(0.05)) {
           formAlliance(a, b, 'alliance');
@@ -553,6 +584,12 @@ G.engine = (function () {
     s.wars.push(w);
     s.pacts = s.pacts.filter(function (p) { return !((p.a === a.id && p.b === b.id) || (p.a === b.id && p.b === a.id)); });
     changeRel(a, b, -60);
+    a.warsFought = (a.warsFought || 0) + 1; b.warsFought = (b.warsFought || 0) + 1;
+    if (!opts.noAllies) {
+      var gl = G.war && G.war.GOALS[w.goal] && w.goal !== 'conquer' ? ' (' + G.war.GOALS[w.goal].name.toLowerCase() + ')' : '';
+      chron(a, opts.parent ? 'Joined the war against ' + b.name : 'Declared war on ' + b.name + gl);
+      chron(b, opts.parent ? a.name + ' joined the war against it' : 'Attacked by ' + a.name);
+    }
     var involvesPlayer = a.id === s.player.nation || b.id === s.player.nation;
     if (!opts.quiet) log('⚔️ ' + a.name + ' declares war on ' + b.name + '!', involvesPlayer ? 'player' : 'major');
     // Nations that like the defender sour on the aggressor.
@@ -575,6 +612,11 @@ G.engine = (function () {
     var a = nation(w.a), b = nation(w.b);
     if (a.alive && b.alive) addPact(a, b, 'nap', 10);
     if (text) log(text, (w.a === S().player.nation || w.b === S().player.nation) ? 'player' : 'major');
+    var yrs = S().year - (w.start || S().year), dur = yrs > 1 ? ' (' + yrs + '-year war)' : '';
+    var clean = text ? text.replace(/^[^A-Za-z]+/, '') : '';
+    if (!a.alive || !b.alive) { /* recorded by annex() */ }
+    else if (clean && !/also make peace/.test(clean)) { chron(a, clean.replace(/\.$/, '') + dur); chron(b, clean.replace(/\.$/, '') + dur); }
+    else { chron(a, 'War with ' + b.name + ' ended' + dur); chron(b, 'War with ' + a.name + ' ended' + dur); }
     // Allies who joined this war make peace when it ends.
     if (w.id) S().wars.filter(function (x) { return x.parent === w.id; }).forEach(function (x) {
       endWar(x, '🕊️ ' + nation(x.a).name + ' and ' + nation(x.b).name + ' also make peace.');
@@ -713,6 +755,7 @@ G.engine = (function () {
     d.leader = makeLeader(d);
     changeRel(d, owner, -40);
     syncBorders(d);
+    chron(d, 'Freed from ' + owner.name + ' and restored as an independent state');
     return true;
   }
 
@@ -732,6 +775,7 @@ G.engine = (function () {
       }
     });
     loser.popAtAnnex = loser.pop; loser.gdpAtAnnex = loser.gdp; loser.ownerGdpAtAnnex = winner.gdp;
+    chron(winner, 'Annexed ' + loser.name); chron(loser, 'Annexed by ' + winner.name);
     loser.alive = false;
     loser.annexedBy = winner.id;
     loser.integrated = false;
@@ -841,6 +885,8 @@ G.engine = (function () {
       w.rebelStr = U.clamp(0.4 + U.rand() * 0.9 + (50 - owner.stability) / 100 + (warsOf(owner).length > 1 ? 0.3 : 0), 0.3, 2.5);
     }
     stat('uprisings');
+    chron(d, 'Rose up against ' + owner.name + ' and proclaimed independence');
+    chron(owner, 'Uprising in occupied ' + d.name);
     log('🔥 Uprising! Rebels in part of occupied ' + d.name + ' proclaim independence from ' + owner.name + '. A war of independence begins.',
       owner.id === pid ? 'player' : 'major');
   }
@@ -1074,6 +1120,7 @@ G.engine = (function () {
       aiLeaders();
       playerPolitics();
       if (!s.succession || !s.succession.dead) playerAging();
+      chronYear();
       // Environmental discoveries heal the Earth, weighted by how big each economy is.
       var wg = alive().reduce(function (a, x) { return a + x.gdp; }, 0);
       var heal = alive().reduce(function (a, x) { return a + (G.research.bonus(x, 'earth') + G.laws.fx(x, 'earth')) * U.clamp(x.gdp / wg * 5, 0.1, 1); }, 0);
@@ -1165,7 +1212,7 @@ G.engine = (function () {
     SECTORS: SECTORS, syncSpend: syncSpend, spending: spending, debt: debt, debtRatio: debtRatio, interestRate: interestRate,
     interest: interest, balance: balance, borrowLimit: borrowLimit, projectCost: projectCost,
     milestoneIndex: milestoneIndex, spaceRate: spaceRate, sat: sat, DIFFICULTY: DIFFICULTY, diff: diff, threatLevel: threatLevel, addThreat: addThreat, growthParts: growthParts, ceilingPc: ceilingPc, earthFactor: earthFactor,
-    allies: allies, allied: allied, near: near, allianceType: allianceType, joinChance: joinChance, occupiedBy: occupiedBy, occupation: occupation, resolveIndependence: resolveIndependence, formAlliance: formAlliance, breakAlliance: breakAlliance, blocPower: blocPower, relation: relation, changeRel: changeRel, wars: wars, warsOf: warsOf, atWar: atWar,
+    allies: allies, allied: allied, near: near, chron: chron, leaderName: leaderName, allianceType: allianceType, joinChance: joinChance, occupiedBy: occupiedBy, occupation: occupation, resolveIndependence: resolveIndependence, formAlliance: formAlliance, breakAlliance: breakAlliance, blocPower: blocPower, relation: relation, changeRel: changeRel, wars: wars, warsOf: warsOf, atWar: atWar,
     warBetween: warBetween, enemiesOf: enemiesOf, hasPact: hasPact, addPact: addPact, canReach: canReach, rank: rank,
     declareWar: declareWar, endWar: endWar, cede: cede, capitulate: capitulate, annex: annex, transferProvinces: transferProvinces, liberate: liberate, syncBorders: syncBorders, addMod: addMod, becomeLeader: becomeLeader,
     killPlayer: killPlayer, successorOptions: successorOptions, applySuccessor: applySuccessor,
