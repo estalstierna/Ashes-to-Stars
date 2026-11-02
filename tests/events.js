@@ -9,7 +9,7 @@ function boot() {
   return ctx.G;
 }
 const setups = [
-  { nation: 'USA', role: 'leader', years: 0 }, { nation: 'SWE', role: 'leader', years: 120 }, { nation: 'CHN', role: 'leader', years: 500 },
+  { nation: 'USA', role: 'leader', years: 0 }, { nation: 'NRD', role: 'leader', years: 120 }, { nation: 'CHN', role: 'leader', years: 500 },
   { nation: 'RUS', role: 'general', years: 30 }, { nation: 'IND', role: 'politician', years: 60 }, { nation: 'PAC', role: 'corporate', years: 200 }
 ];
 let runs = 0, fails = 0;

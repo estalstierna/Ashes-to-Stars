@@ -49,9 +49,9 @@ G.names = (function () {
       s: ['Al-Rashid', 'Haddad', 'Al-Mansour', 'Nasser', 'Khoury', 'Al-Farsi', 'Saleh', 'Hakim', 'Aziz', 'Qasim']
     },
     nordic: {
-      m: ['Erik', 'Oskar', 'Lars', 'Viktor', 'Anton', 'Gustav', 'Nils', 'Axel', 'Sven', 'Linus'],
-      f: ['Astrid', 'Freja', 'Ingrid', 'Elsa', 'Saga', 'Linnea', 'Maja', 'Sigrid', 'Ebba', 'Tove'],
-      s: ['Lindberg', 'Karlsson', 'Nyström', 'Bergqvist', 'Ekström', 'Sandberg', 'Holm', 'Lund', 'Falk', 'Åberg']
+      m: ['Erik', 'Oskar', 'Lars', 'Viktor', 'Anton', 'Gustav', 'Nils', 'Axel', 'Sven', 'Linus', 'Mikkel', 'Rasmus', 'Magnus', 'Håkon', 'Eero', 'Mikko', 'Jonas', 'Aksel'],
+      f: ['Astrid', 'Freja', 'Ingrid', 'Elsa', 'Saga', 'Linnea', 'Maja', 'Sigrid', 'Ebba', 'Tove', 'Mette', 'Ida', 'Solveig', 'Kari', 'Aino', 'Helmi', 'Silje', 'Karen'],
+      s: ['Lindberg', 'Karlsson', 'Nyström', 'Bergqvist', 'Ekström', 'Sandberg', 'Holm', 'Lund', 'Falk', 'Åberg', 'Nielsen', 'Jensen', 'Hansen', 'Johansen', 'Haugen', 'Virtanen', 'Korhonen', 'Mäkinen', 'Lindqvist']
     },
     turkic: {
       m: ['Emre', 'Arslan', 'Timur', 'Kerem', 'Nurlan', 'Baran', 'Aibek', 'Can', 'Murat', 'Ilyas'],

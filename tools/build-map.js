@@ -13,11 +13,11 @@ const W = 1000, H = 500;
 // Real-world countries -> nations of 2077 (fiction).
 const ASSIGN = {
   USA: ['United States of America', 'Puerto Rico'],
-  EF: ['Albania', 'Austria', 'Belgium', 'Bosnia and Herz.', 'Bulgaria', 'Croatia', 'Cyprus', 'Czechia', 'Denmark', 'Estonia',
-    'Finland', 'France', 'Germany', 'Greece', 'Greenland', 'Hungary', 'Iceland', 'Ireland', 'Italy', 'Kosovo', 'Latvia', 'Lithuania',
-    'Luxembourg', 'Macedonia', 'Moldova', 'Montenegro', 'Netherlands', 'Norway', 'Poland', 'Portugal', 'Romania', 'Serbia', 'Slovakia',
+  EF: ['Albania', 'Austria', 'Belgium', 'Bosnia and Herz.', 'Bulgaria', 'Croatia', 'Cyprus', 'Czechia', 'Estonia',
+    'France', 'Germany', 'Greece', 'Greenland', 'Hungary', 'Iceland', 'Ireland', 'Italy', 'Kosovo', 'Latvia', 'Lithuania',
+    'Luxembourg', 'Macedonia', 'Moldova', 'Montenegro', 'Netherlands', 'Poland', 'Portugal', 'Romania', 'Serbia', 'Slovakia',
     'Slovenia', 'Spain', 'Switzerland', 'Ukraine', 'United Kingdom'],
-  SWE: ['Sweden'],
+  NRD: ['Sweden', 'Norway', 'Denmark', 'Finland'],
   RUS: ['Belarus'],
   CHN: ['China', 'Taiwan', 'Mongolia', 'Vietnam', 'Laos', 'Cambodia', 'Myanmar', 'Thailand'],
   IND: ['India', 'Pakistan', 'Bangladesh', 'Nepal', 'Bhutan', 'Sri Lanka'],
@@ -40,7 +40,7 @@ const ASSIGN = {
 
 // Label anchors (lon, lat) and Singapore marker.
 const LABELS = {
-  USA: [-99, 40], CAS: [-123, 52], EF: [12, 49], SWE: [16, 63], RUS: [40, 56], SIB: [105, 63], CHN: [104, 33], IND: [79, 22],
+  USA: [-99, 40], CAS: [-123, 52], EF: [12, 49], NRD: [17, 64], RUS: [40, 56], SIB: [105, 63], CHN: [104, 33], IND: [79, 22],
   PAC: [136, 37], TUR: [62, 41], GULF: [46, 24], PAU: [20, 4], SAC: [-58, -12], MESO: [-100, 21], AUS: [134, -25], SGP: [103.8, 1.35]
 };
 

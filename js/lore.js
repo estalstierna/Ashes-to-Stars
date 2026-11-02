@@ -11,7 +11,7 @@
     EF: {
       capital: 'Brussels', founded: 2064, motto: 'United in diversity, unbroken in fire',
       story: 'When the old European Union stalled in the first years of the war, its members chose to merge rather than fall one by one. The Treaty of Lyon created a federal government with a single army and treasury. It held the eastern front for thirteen years. Today the Federation is rich, cautious and bureaucratic, and its people want one thing above all: never again.',
-      past: [[2062, 'European Union mobilises as the Long War begins'], [2064, 'Treaty of Lyon creates the European Federation'], [2069, 'Held the eastern front at the Second Battle of the Vistula'], [2071, 'Sweden left the Federation'], [2077, 'Signed the Geneva Armistice']]
+      past: [[2062, 'European Union mobilises as the Long War begins'], [2064, 'Treaty of Lyon creates the European Federation'], [2069, 'Held the eastern front at the Second Battle of the Vistula'], [2071, 'Denmark, Sweden, Norway and Finland left the Federation'], [2077, 'Signed the Geneva Armistice']]
     },
     RUS: {
       capital: 'Moscow', founded: 1991, motto: 'Strength in unity',
@@ -73,10 +73,10 @@
       story: 'The Siberian garrisons had not been paid in two years when they turned on Moscow in 2070. The generals who lead the Free Republic still rule from the barracks, but they sit on the richest untouched resources left on Earth. Everyone wants Siberia, and its rulers know it.',
       past: [[2070, 'Garrison mutiny; Siberia declared independence from Moscow'], [2071, 'China recognised the Free Republic'], [2074, 'Repelled a Russian counter-offensive at Omsk']]
     },
-    SWE: {
-      capital: 'Stockholm', founded: 1523, motto: 'For Sweden, with the times',
-      story: 'Sweden joined the European Federation at its founding, then walked out in 2071 after a bitter fight over conscription and Arctic bases. It is small, wealthy, highly educated and stubbornly independent. Stockholm insists that a country of ten million can still lead the world, in science if nothing else.',
-      past: [[2062, 'Joined the war as an EU member'], [2064, 'Founding member of the European Federation'], [2071, 'Left the European Federation by referendum'], [2075, 'Opened the Kiruna launch site']]
+    NRD: {
+      capital: 'Copenhagen', founded: 2071, motto: 'Five crosses, one north',
+      story: 'The Nordic states joined the European Federation at its founding, but the war turned the Arctic into a front line. Brussels wanted conscription quotas and Arctic bases on Nordic soil. In 2071 Denmark, Sweden, Norway and Finland walked out together and signed the Treaty of Kalmar, reviving an old dream of a union of the North. They share a parliament in Copenhagen, an army and the world\'s richest sovereign fund. They are small, wealthy, highly educated and stubbornly independent, and they insist that twenty million people can still lead the world.',
+      past: [[2062, 'Joined the war as EU members'], [2064, 'Founding members of the European Federation'], [2066, 'Finnish front held against Russia at Lappeenranta'], [2071, 'Left the European Federation; the Treaty of Kalmar founded the Nordic Confederation'], [2073, 'Norwegian sovereign fund merged into the Nordic Fund'], [2075, 'Opened the Andøya and Kiruna launch sites']]
     },
     SGP: {
       capital: 'Singapore', founded: 1965, motto: 'Onward, neutral, open',

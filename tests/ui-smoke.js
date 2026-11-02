@@ -18,7 +18,7 @@ const path = require('path');
   await shot('02-lore');
   await page.click('[data-act=tocreate]');
   await page.fill('#cname', 'Astrid Lindberg');
-  await page.click('[data-act=pnation][data-arg=SWE]');
+  await page.click('[data-act=pnation][data-arg=NRD]');
   await page.click('[data-act=prole][data-arg=leader]');
   await shot('03-create');
   await page.click('[data-act=start]');

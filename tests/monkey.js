@@ -7,7 +7,7 @@ const turns = +process.argv[2] || 40;
 let seed = +process.argv[3] || 1;
 function rnd() { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }
 
-const setups = [['USA', 'leader', 'normal'], ['SWE', 'leader', 'brutal'], ['RUS', 'general', 'hard'], ['IND', 'politician', 'easy'], ['PAC', 'corporate', 'normal'], ['SGP', 'leader', 'hard']];
+const setups = [['USA', 'leader', 'normal'], ['NRD', 'leader', 'brutal'], ['RUS', 'general', 'hard'], ['IND', 'politician', 'easy'], ['PAC', 'corporate', 'normal'], ['SGP', 'leader', 'hard']];
 (async () => {
   const browser = await chromium.launch();
   let failures = 0;

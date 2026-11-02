@@ -89,8 +89,11 @@
     SIB: function () {
       return rect(0, 0, 30, 20, '#1e6b3a') + '<polygon points="0,20 0,13 30,0 30,7" fill="#fff"/>' + star(6, 5, 2.4, '#c8102e');
     },
-    SWE: function () {
-      return rect(0, 0, 30, 20, '#006aa7') + rect(9, 0, 3.4, 20, '#fecc00') + rect(0, 8.3, 30, 3.4, '#fecc00');
+    NRD: function () {
+      // Deep blue Nordic cross: Swedish gold fimbriated in Danish/Norwegian white, on Finnish blue.
+      return rect(0, 0, 30, 20, '#0b3d7a') + rect(8.4, 0, 4.6, 20, '#fff') + rect(0, 7.7, 30, 4.6, '#fff') +
+        rect(9.3, 0, 2.8, 20, '#c8102e') + rect(0, 8.6, 30, 2.8, '#c8102e') +
+        rect(10.05, 0, 1.3, 20, '#fecc00') + rect(0, 9.35, 30, 1.3, '#fecc00');
     },
     SGP: function () {
       return hstripes(['#ef3340', '#fff']) + crescent(6, 5, 3.2, '#fff', '#ef3340', 1.2) +

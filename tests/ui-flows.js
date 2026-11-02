@@ -44,12 +44,12 @@ async function endTurn(page) {
 
   console.log('Map');
   {
-    const { page, errors } = await newGame(browser, 'SWE', 'leader');
+    const { page, errors } = await newGame(browser, 'NRD', 'leader');
     await page.click('[data-act=tab][data-arg=world]');
     check(await page.$('#world-map path[data-nation]'), 'map draws nations');
-    const pos = await page.evaluate(() => { const t = document.querySelector('.map-label[data-nation=SWE]').getBoundingClientRect(); return { x: t.x + t.width / 2, y: t.y + t.height / 2 }; });
+    const pos = await page.evaluate(() => { const t = document.querySelector('.map-label[data-nation=NRD]').getBoundingClientRect(); return { x: t.x + t.width / 2, y: t.y + t.height / 2 }; });
     await page.mouse.click(pos.x, pos.y);
-    check((await page.textContent('#modal-box h2')).includes('Sweden'), 'tapping a nation opens its details');
+    check((await page.textContent('#modal-box h2')).includes('Nordic'), 'tapping a nation opens its details');
     await page.click('#modal [data-act=close]');
     await page.click('[data-act=worldview][data-arg=diplo]');
     check((await page.textContent('.page')).includes('Your treaties'), 'diplomacy view renders');
@@ -58,7 +58,7 @@ async function endTurn(page) {
 
   console.log('Nation flags and history');
   {
-    const { page, errors } = await newGame(browser, 'SWE', 'leader');
+    const { page, errors } = await newGame(browser, 'NRD', 'leader');
     for (let i = 0; i < 4; i++) await endTurn(page);
     await page.evaluate(() => { G.engine.declareWar(G.engine.nation('RUS'), G.engine.nation('CAS')); G.uiKit.view.tab = 'world'; G.ui.render(); });
     const flags = await page.$$eval('.nation-row svg.flag', a => a.length);
@@ -91,7 +91,7 @@ async function endTurn(page) {
 
   console.log('Treaties and calls to arms');
   {
-    const { page, errors } = await newGame(browser, 'SWE', 'leader');
+    const { page, errors } = await newGame(browser, 'NRD', 'leader');
     const queued = await page.evaluate(() => {
       const E = G.engine; E.formAlliance(E.pn(), E.nation('EF'), 'alliance'); E.formAlliance(E.pn(), E.nation('CAS'), 'defensive');
       E.declareWar(E.nation('USA'), E.nation('CAS')); // attacks our defensive partner
@@ -113,7 +113,7 @@ async function endTurn(page) {
 
   console.log('End-turn reminder, research and projects');
   {
-    const { page, errors } = await newGame(browser, 'SWE', 'leader');
+    const { page, errors } = await newGame(browser, 'NRD', 'leader');
     await page.click('[data-act=endturn]');
     const w = await page.$$eval('#modal [data-act=warngo]', els => els.map(e => e.getAttribute('data-arg')));
     check(w.includes('act') && w.includes('sci') && w.includes('mil'), 'reminder lists actions, research and projects');
@@ -126,7 +126,7 @@ async function endTurn(page) {
     check(!w2.includes('sci') && !w2.includes('mil'), 'reminder clears once research and projects run');
     await page.click('#modal [data-act=endturn-force]');
     for (let i = 0; i < 3; i++) await endTurn(page);
-    const done = await page.evaluate(() => G.state.nations.SWE.rs.done);
+    const done = await page.evaluate(() => G.state.nations.NRD.rs.done);
     check(done.includes('fusion'), 'research completes');
     check(errors.length === 0, 'no page errors ' + errors.join('; '));
   }
@@ -210,7 +210,7 @@ async function endTurn(page) {
 
     console.log('Laws');
   {
-    const { page, errors } = await newGame(browser, 'SWE', 'leader');
+    const { page, errors } = await newGame(browser, 'NRD', 'leader');
     await page.click('[data-act=homeview][data-arg=laws]');
     check(await page.$('[data-act=lawpick][data-arg="ai|unrestricted"]'), 'laws view lists options');
     const before = await page.evaluate(() => G.research.rate(G.engine.pn()));

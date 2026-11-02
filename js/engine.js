@@ -5,6 +5,7 @@ G.engine = (function () {
   var U = G.util, D = G.data;
   var SPACE_K = 22;
   var SAVE_VERSION = 1;
+  var MAP_VER = 2; // bump when tools/build-map.js changes the provinces
 
   // ---------- difficulty ----------
   // aiGrowth: extra growth for AI economies. cost: multiplier on your actions' cost.
@@ -253,7 +254,7 @@ G.engine = (function () {
       });
     });
     [['USA', 'CHN', -55], ['USA', 'RUS', -60], ['EF', 'RUS', -65], ['CHN', 'IND', -40], ['RUS', 'SIB', -70],
-     ['USA', 'CAS', -35], ['USA', 'EF', 35], ['PAC', 'CHN', -35], ['EF', 'SWE', 30], ['SWE', 'CAS', 20],
+     ['USA', 'CAS', -35], ['USA', 'EF', 35], ['PAC', 'CHN', -35], ['EF', 'NRD', 30], ['NRD', 'CAS', 20], ['NRD', 'RUS', -30],
      ['TUR', 'RUS', -30], ['GULF', 'IND', 20], ['SAC', 'MESO', 25], ['AUS', 'SGP', 40]].forEach(function (r) {
       s.nations[r[0]].rel[r[1]] = r[2]; s.nations[r[1]].rel[r[0]] = r[2];
     });
@@ -262,7 +263,7 @@ G.engine = (function () {
     s.firsts[2] = { nation: 'USA', year: 2065 };
 
     // Alliances that survived the Long War.
-    [['USA', 'EF', 'alliance'], ['AUS', 'SGP', 'alliance'], ['SAC', 'MESO', 'defensive'], ['CHN', 'SIB', 'defensive'], ['EF', 'SWE', 'defensive'], ['IND', 'GULF', 'defensive']].forEach(function (x) {
+    [['USA', 'EF', 'alliance'], ['AUS', 'SGP', 'alliance'], ['SAC', 'MESO', 'defensive'], ['CHN', 'SIB', 'defensive'], ['EF', 'NRD', 'defensive'], ['IND', 'GULF', 'defensive']].forEach(function (x) {
       s.pacts.push({ a: x[0], b: x[1], type: x[2], until: 999999 });
       s.nations[x[0]].rel[x[1]] = Math.max(s.nations[x[0]].rel[x[1]] || 0, 55); s.nations[x[1]].rel[x[0]] = Math.max(s.nations[x[1]].rel[x[0]] || 0, 55);
     });
@@ -282,6 +283,7 @@ G.engine = (function () {
     if (p.role === 'leader') n.lastElection = 2077;
 
     G.territory.init();
+    s.mapVer = MAP_VER;
     if (G.space) G.space.init();
     chronYear();
     recordHistory();
@@ -1181,9 +1183,19 @@ G.engine = (function () {
     try {
       var raw = localStorage.getItem(KEY);
       if (!raw) return false;
+      // Older saves: Sweden became the Nordic Confederation (new id NRD).
+      if (raw.indexOf('"SWE"') >= 0 && raw.indexOf('"NRD"') < 0) raw = raw.replace(/"SWE"/g, '"NRD"');
       var st = JSON.parse(raw);
       if (st.version !== SAVE_VERSION) return false;
       G.state = st;
+      var nd = st.nations.NRD, dd = D.nations.filter(function (x) { return x.id === 'NRD'; })[0];
+      if (nd && dd && nd.name !== dd.name) { nd.name = dd.name; nd.short = dd.short; nd.desc = dd.desc; nd.title = dd.title; nd.tier = dd.tier; }
+      // The province map changed: rebuild borders from the original nations, applying full annexations.
+      if (st.prov && st.mapVer !== MAP_VER) {
+        st.prov = null;
+        st.wars.forEach(function (w) { w.occA = []; w.occB = []; });
+      }
+      st.mapVer = MAP_VER;
       // Older saves: derive per-sector spending from budget weights.
       for (var id in st.nations) {
         var sn = st.nations[id];
