@@ -122,6 +122,24 @@ G.space = (function () {
         else independence(c);
       }
     });
+    // Independent settlements on the same world band together (at most one free colony per world).
+    BODIES.forEach(function (b) {
+      var free = list().filter(function (c) { return c.free && c.body === b.id; });
+      if (free.length < 2) return;
+      free.sort(function (x, y) { return y.pop - x.pop; });
+      free.slice(1).forEach(function (c) { free[0].pop += c.pop; free[0].level = Math.max(free[0].level, c.level); });
+      S().colonies = list().filter(function (c) { return free.indexOf(c) < 1; });
+    });
+    // A conqueror holding two colonies on one world merges them.
+    E().alive().forEach(function (n) {
+      BODIES.forEach(function (b) {
+        var mine = list().filter(function (c) { return c.nation === n.id && c.body === b.id; });
+        if (mine.length < 2) return;
+        mine.sort(function (x, y) { return y.level - x.level; });
+        mine.slice(1).forEach(function (c) { mine[0].pop += c.pop; });
+        S().colonies = list().filter(function (c) { return mine.indexOf(c) < 1; });
+      });
+    });
     // AI nations found and grow colonies.
     E().alive().forEach(function (n) {
       if (n.id === pid && E().isLeader()) return;

@@ -228,7 +228,7 @@ G.engine = (function () {
       });
     });
     [['USA', 'CHN', -55], ['USA', 'RUS', -60], ['EF', 'RUS', -65], ['CHN', 'IND', -40], ['RUS', 'SIB', -70],
-     ['USA', 'CAS', -35], ['USA', 'EF', 35], ['PAC', 'CHN', -35], ['EF', 'SWE', 10], ['SWE', 'CAS', 40],
+     ['USA', 'CAS', -35], ['USA', 'EF', 35], ['PAC', 'CHN', -35], ['EF', 'SWE', 30], ['SWE', 'CAS', 20],
      ['TUR', 'RUS', -30], ['GULF', 'IND', 20], ['SAC', 'MESO', 25], ['AUS', 'SGP', 40]].forEach(function (r) {
       s.nations[r[0]].rel[r[1]] = r[2]; s.nations[r[1]].rel[r[0]] = r[2];
     });
@@ -237,7 +237,7 @@ G.engine = (function () {
     s.firsts[2] = { nation: 'USA', year: 2065 };
 
     // Alliances that survived the Long War.
-    [['USA', 'EF', 'alliance'], ['AUS', 'SGP', 'alliance'], ['SAC', 'MESO', 'defensive'], ['CHN', 'SIB', 'defensive'], ['SWE', 'CAS', 'defensive']].forEach(function (x) {
+    [['USA', 'EF', 'alliance'], ['AUS', 'SGP', 'alliance'], ['SAC', 'MESO', 'defensive'], ['CHN', 'SIB', 'defensive'], ['EF', 'SWE', 'defensive'], ['IND', 'GULF', 'defensive']].forEach(function (x) {
       s.pacts.push({ a: x[0], b: x[1], type: x[2], until: 999999 });
       s.nations[x[0]].rel[x[1]] = Math.max(s.nations[x[0]].rel[x[1]] || 0, 55); s.nations[x[1]].rel[x[0]] = Math.max(s.nations[x[1]].rel[x[0]] || 0, 55);
     });
@@ -404,6 +404,13 @@ G.engine = (function () {
     }).map(function (p) { return nation(p.a === n.id ? p.b : p.a); }).filter(function (x) { return x && x.alive; });
   }
   function allied(a, b) { return !!pactBetween(a, b); }
+  // Is an alliance between a and b geographically plausible? Neighbours, nations that share
+  // a neighbour, or a power able to project force to the other.
+  function near(a, b) {
+    if (a.neighbors.indexOf(b.id) >= 0 || b.neighbors.indexOf(a.id) >= 0) return true;
+    if (a.neighbors.some(function (x) { return b.neighbors.indexOf(x) >= 0; })) return true;
+    return canReach(a, b) || canReach(b, a);
+  }
   function formAlliance(a, b, type) {
     type = type || 'alliance';
     breakAlliance(a, b);
@@ -455,7 +462,7 @@ G.engine = (function () {
       // A common enemy brings nations together.
       function sharedEnemy(b) { return ns.some(function (e) { return e !== a && e !== b && relation(a, e) < -30 && relation(b, e) < -30; }); }
       var cands = ns.filter(function (b) {
-        return b !== a && !allied(a, b) && !warBetween(a, b) && allies(b).length < 4 && !isPlayer(b) &&
+        return b !== a && !allied(a, b) && !warBetween(a, b) && allies(b).length < 4 && !isPlayer(b) && near(a, b) &&
           (relation(a, b) > 25 || (relation(a, b) > 5 && sharedEnemy(b)));
       });
       if (!cands.length) return;
@@ -645,6 +652,11 @@ G.engine = (function () {
 
   function capitulate(w, winner, loser) {
     if (w.independence) return resolveIndependence(w, winner.id === w.a);
+    // An attacker that wins outright gets what it went to war for.
+    if (G.war && winner.id === w.a && w.goal && w.goal !== 'conquer') {
+      var terms = G.war.goalTerms(w, winner);
+      if (terms.length) { G.war.apply(w, winner, terms); return; }
+    }
     var full = loser.gdp < winner.gdp * 0.2;
     if (full) {
       annex(winner, loser);
@@ -659,6 +671,15 @@ G.engine = (function () {
 
   // Hand specific provinces from loser to winner; people and economy follow the land.
   function transferProvinces(winner, loser, list) {
+    // Only provinces the loser still owns, and never its very last one.
+    var mine = G.territory.owned(loser.id);
+    list = list.filter(function (i) { return S().prov[i] === loser.id; });
+    if (list.length >= mine.length) {
+      var keep = G.mapdata.labelProv[loser.id];
+      if (list.indexOf(keep) < 0) keep = list[list.length - 1];
+      list = list.filter(function (i) { return i !== keep; });
+    }
+    if (!list.length) return 0;
     var share = G.territory.shareOf(list, loser.id);
     if (!share) return 0;
     var frac = U.clamp(share, 0.005, 0.6);
@@ -686,6 +707,7 @@ G.engine = (function () {
     d.pop = Math.min(owner.pop * 0.4, home.pop * Math.max(share, 0.05)); d.gdp = Math.min(owner.gdp * 0.4, home.gdp * Math.max(share, 0.05) * 0.7);
     owner.pop -= d.pop; owner.gdp -= d.gdp;
     d.treasury = 0; d.stability = 40; d.approval = 70; d.warYears = 0; d.mods = [];
+    G.laws.resetForGov(d);
     syncSpend(d);
     G.military.init(d, funds(d).mil, 0.4);
     d.leader = makeLeader(d);
@@ -713,6 +735,8 @@ G.engine = (function () {
     loser.alive = false;
     loser.annexedBy = winner.id;
     loser.integrated = false;
+    // Colonies of a conquered nation pass to the conqueror.
+    if (G.space) G.space.list().forEach(function (c) { if (c.nation === loser.id) c.nation = winner.id; });
     loser.occ = { unrest: 45, integ: loser.occ ? loser.occ.integ * 0.5 : 0, since: S().year, warned: false };
     G.territory.annex(winner.id, loser.id);
     S().wars.filter(function (x) { return x.a === loser.id || x.b === loser.id; }).forEach(function (x) { endWar(x); });
@@ -796,6 +820,7 @@ G.engine = (function () {
     d.tech = owner.tech * 0.9; d.space = 0;
     d.treasury = 0; d.stability = 25; d.approval = 75; d.warYears = 0; d.mods = []; d.born = S().year;
     d.gov = U.pick(['junta', 'junta', 'democracy', 'autocracy']);
+    G.laws.resetForGov(d);
     d.annexedBy = null; d.occ = null;
     syncSpend(d);
     // The rebels seize local armouries and defecting garrisons: half of the occupier's
@@ -946,7 +971,7 @@ G.engine = (function () {
       if (U.chance(risk)) {
         log('💥 Coup! Your own generals storm the palace. Your rule is over.', 'player');
         n.leader = makeLeader(n);
-        if (n.gov !== 'junta' && U.chance(0.6)) n.gov = 'junta';
+        if (n.gov !== 'junta' && U.chance(0.6)) { n.gov = 'junta'; G.laws.resetForGov(n); }
         n.stability = 45;
         var survive = U.chance(0.4);
         if (survive) {
@@ -1140,7 +1165,7 @@ G.engine = (function () {
     SECTORS: SECTORS, syncSpend: syncSpend, spending: spending, debt: debt, debtRatio: debtRatio, interestRate: interestRate,
     interest: interest, balance: balance, borrowLimit: borrowLimit, projectCost: projectCost,
     milestoneIndex: milestoneIndex, spaceRate: spaceRate, sat: sat, DIFFICULTY: DIFFICULTY, diff: diff, threatLevel: threatLevel, addThreat: addThreat, growthParts: growthParts, ceilingPc: ceilingPc, earthFactor: earthFactor,
-    allies: allies, allied: allied, allianceType: allianceType, joinChance: joinChance, occupiedBy: occupiedBy, occupation: occupation, resolveIndependence: resolveIndependence, formAlliance: formAlliance, breakAlliance: breakAlliance, blocPower: blocPower, relation: relation, changeRel: changeRel, wars: wars, warsOf: warsOf, atWar: atWar,
+    allies: allies, allied: allied, near: near, allianceType: allianceType, joinChance: joinChance, occupiedBy: occupiedBy, occupation: occupation, resolveIndependence: resolveIndependence, formAlliance: formAlliance, breakAlliance: breakAlliance, blocPower: blocPower, relation: relation, changeRel: changeRel, wars: wars, warsOf: warsOf, atWar: atWar,
     warBetween: warBetween, enemiesOf: enemiesOf, hasPact: hasPact, addPact: addPact, canReach: canReach, rank: rank,
     declareWar: declareWar, endWar: endWar, cede: cede, capitulate: capitulate, annex: annex, transferProvinces: transferProvinces, liberate: liberate, syncBorders: syncBorders, addMod: addMod, becomeLeader: becomeLeader,
     killPlayer: killPlayer, successorOptions: successorOptions, applySuccessor: applySuccessor,

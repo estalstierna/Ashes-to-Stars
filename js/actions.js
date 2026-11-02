@@ -231,10 +231,10 @@ G.actions = (function () {
         return 'Pact signed.';
       } },
     { id: 'defpact', cat: 'Diplomacy', role: 'leader', name: 'Propose defensive pact', cost: 0.002, target: 'defcand',
-      desc: 'You defend each other only if one of you is attacked. Easier to get than a full alliance (relations 25+ to be likely).',
+      desc: 'You defend each other only if one of you is attacked. Easier to get than a full alliance (relations 25+ to be likely). Distant nations are reluctant.',
       run: function (id) {
         var n = N(), t = E.nation(id);
-        var p = U.clamp((E.relation(n, t) - 5) / 50 + strengthAppeal(n, t), 0.04, 0.92);
+        var p = U.clamp((E.relation(n, t) - 5) / 50 + strengthAppeal(n, t) - (E.near(n, t) ? 0 : 0.2), 0.04, 0.92);
         if (E.allies(t).length >= 4) p *= 0.4;
         if (!U.chance(p)) { E.changeRel(n, t, -2); return t.name + ' declines a defensive pact.'; }
         E.formAlliance(n, t, 'defensive');
@@ -245,7 +245,7 @@ G.actions = (function () {
       desc: 'Defend each other AND possibly join each other\'s wars of aggression. Can upgrade a defensive pact. Needs strong relations (45+ to be likely).',
       run: function (id) {
         var n = N(), t = E.nation(id);
-        var p = U.clamp((E.relation(n, t) - 25) / 50 + strengthAppeal(n, t) + (E.allianceType(n, t) === 'defensive' ? 0.1 : 0), 0.03, 0.9);
+        var p = U.clamp((E.relation(n, t) - 25) / 50 + strengthAppeal(n, t) - (E.near(n, t) ? 0 : 0.2) + (E.allianceType(n, t) === 'defensive' ? 0.1 : 0), 0.03, 0.9);
         if (E.allies(t).length >= 4 && !E.allied(n, t)) p *= 0.3;
         if (!U.chance(p)) { E.changeRel(n, t, -3); return t.name + ' declines a full alliance.'; }
         E.formAlliance(n, t, 'alliance');

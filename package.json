@@ -8,6 +8,7 @@
     "test:sim": "node tests/sim.js 6 3000",
     "test:events": "node tests/events.js",
     "test:ui": "node tests/ui-smoke.js /tmp/shots && node tests/ui-flows.js",
+    "test:monkey": "node tests/monkey.js",
     "test:all": "npm test && npm run test:ui"
   },
   "devDependencies": {

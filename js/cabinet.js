@@ -148,6 +148,7 @@ G.cabinet = (function () {
         if (U.chance(0.5 - C('military') / 250)) {
           E().log('💥 Your rival General ' + r.name + ' stages a coup!', 'player');
           n.gov = 'junta'; n.leader = { name: r.name, gender: r.gender, age: r.age, since: s.year };
+          G.laws.resetForGov(n);
           p.role = 'politician'; p.influence = Math.round(p.influence * 0.4);
           s.succession = { reason: 'coup-survived', text: 'General ' + r.name + ' overthrew you. You escaped with your life. Plot your comeback, or pass the torch.' };
           s.rivals = s.rivals.filter(function (x) { return x !== r; });
@@ -175,6 +176,7 @@ G.cabinet = (function () {
   function candidates(post) {
     var s = S(), n = E().pn(), key = post + ':' + s.year;
     s.candidates = s.candidates || {};
+    for (var k in s.candidates) if (k.split(':')[1] !== String(s.year)) delete s.candidates[k];
     if (!s.candidates[key]) s.candidates[key] = [minister(n, post), minister(n, post), minister(n, post)];
     return s.candidates[key];
   }

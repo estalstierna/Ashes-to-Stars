@@ -98,6 +98,7 @@ G.war = (function () {
       if (id === 'reparations') { var r = t.gdp * 0.05; t.treasury -= r; me.treasury += r; parts.push('reparations of ' + U.money(r)); }
       if (id === 'regime') {
         t.gov = me.gov; t.leader = E().makeLeader(t); t.stability = Math.max(30, t.stability - 10);
+        G.laws.resetForGov(t);
         E().changeRel(me, t, 60); E().formAlliance(me, t, 'defensive');
         parts.push('a new, friendly government in ' + t.short);
       }
@@ -116,6 +117,17 @@ G.war = (function () {
     }
     E().endWar(w, '🕊️ ' + me.name + ' and ' + t.name + ' make peace' + (parts.length ? ': ' + parts.join(', ') + '.' : ' (white peace).'));
     return parts.length ? 'Peace: ' + parts.join(', ') + '.' : 'White peace: the war ends with no changes.';
+  }
+
+  // The peace terms that fulfil a war goal (used when the enemy capitulates).
+  function goalTerms(w, me) {
+    var t = other(w, me), out = [];
+    if (w.goal === 'tribute') out = ['reparations'];
+    else if (w.goal === 'regime') out = ['regime'];
+    else if (w.goal === 'annex') out = t.gdp < me.gdp * 0.35 ? ['annex'] : ['occupied'];
+    else if (w.goal === 'liberate') out = E().occupiedBy(t).map(function (d) { return 'liberate:' + d.id; });
+    if (out.indexOf('annex') < 0 && occupiedBy(w, me).length && w.goal !== 'liberate') out.unshift('occupied');
+    return out;
   }
 
   // Player proposes peace with chosen terms. Returns { accepted, text }.
@@ -166,5 +178,5 @@ G.war = (function () {
   );
 
   return { GOALS: GOALS, goalsAgainst: goalsAgainst, front: front, occupiedBy: occupiedBy, terms: terms, acceptance: acceptance,
-    apply: apply, propose: propose, playerWarYear: playerWarYear, score: score, other: other };
+    apply: apply, propose: propose, goalTerms: goalTerms, playerWarYear: playerWarYear, score: score, other: other };
 })();

@@ -60,7 +60,7 @@ async function endTurn(page) {
   {
     const { page, errors } = await newGame(browser, 'SWE', 'leader');
     const queued = await page.evaluate(() => {
-      const E = G.engine; E.formAlliance(E.pn(), E.nation('EF'), 'alliance');
+      const E = G.engine; E.formAlliance(E.pn(), E.nation('EF'), 'alliance'); E.formAlliance(E.pn(), E.nation('CAS'), 'defensive');
       E.declareWar(E.nation('USA'), E.nation('CAS')); // attacks our defensive partner
       E.declareWar(E.nation('EF'), E.nation('RUS'));  // our ally attacks someone
       return G.state.eventQueue.map(e => e.id);
