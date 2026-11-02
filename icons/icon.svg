@@ -1,12 +1,71 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Ashes to Stars: embers rise from a scarred Earth and become stars; a brass trajectory climbs to a new star. -->
   <defs>
-    <radialGradient id="bg" cx="50%" cy="85%" r="80%"><stop offset="0" stop-color="#5a2a17"/><stop offset=".55" stop-color="#160f14"/><stop offset="1" stop-color="#0b0f17"/></radialGradient>
-    <linearGradient id="pl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd166"/><stop offset="1" stop-color="#ff5e62"/></linearGradient>
+    <radialGradient id="sky" cx="50%" cy="78%" r="78%">
+      <stop offset="0" stop-color="#2b2016"/>
+      <stop offset=".45" stop-color="#121721"/>
+      <stop offset="1" stop-color="#080b10"/>
+    </radialGradient>
+    <linearGradient id="earth" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#18202b"/>
+      <stop offset=".25" stop-color="#0e131a"/>
+      <stop offset="1" stop-color="#090c11"/>
+    </linearGradient>
+    <linearGradient id="path" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#b8853a" stop-opacity="0"/>
+      <stop offset=".35" stop-color="#d2a857"/>
+      <stop offset="1" stop-color="#f4dfae"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#fff3d6" stop-opacity=".9"/>
+      <stop offset=".3" stop-color="#e8c27a" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#d2a857" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter>
+    <mask id="crescent"><rect width="512" height="512" fill="#fff"/><circle cx="186" cy="156" r="25" fill="#000"/></mask>
   </defs>
-  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
-  <circle cx="256" cy="560" r="230" fill="#1d1a22" stroke="#ff8a3d" stroke-width="6"/>
-  <path d="M256 120 L276 300 L256 290 L236 300 Z" fill="url(#pl)"/>
-  <path d="M246 300 Q256 360 266 300" fill="#ff8a3d" opacity=".8"/>
-  <g fill="#e6ebf3"><circle cx="110" cy="110" r="5"/><circle cx="400" cy="90" r="4"/><circle cx="420" cy="200" r="3"/><circle cx="90" cy="230" r="3"/><circle cx="180" cy="70" r="3"/><circle cx="340" cy="150" r="2.5"/></g>
-  <circle cx="380" cy="130" r="26" fill="#cfd6e3"/><circle cx="372" cy="124" r="5" fill="#aab3c3"/><circle cx="388" cy="140" r="4" fill="#aab3c3"/>
+
+  <rect width="512" height="512" fill="url(#sky)"/>
+
+  <!-- Distant stars -->
+  <g fill="#dfe6f1">
+    <circle cx="96" cy="96" r="2.2" opacity=".7"/><circle cx="420" cy="84" r="1.8" opacity=".6"/><circle cx="442" cy="214" r="1.6" opacity=".5"/>
+    <circle cx="72" cy="246" r="1.6" opacity=".45"/><circle cx="250" cy="70" r="1.6" opacity=".55"/><circle cx="390" cy="300" r="1.4" opacity=".35"/>
+    <circle cx="128" cy="300" r="1.3" opacity=".3"/>
+  </g>
+
+  <!-- The Moon: a thin crescent -->
+  <circle cx="170" cy="164" r="27" fill="#cfd8e6" mask="url(#crescent)" opacity=".9"/>
+
+  <!-- Earth's limb with a brass atmosphere -->
+  <circle cx="256" cy="700" r="370" fill="none" stroke="#d2a857" stroke-width="14" opacity=".28" filter="url(#soft)"/>
+  <circle cx="256" cy="700" r="370" fill="url(#earth)"/>
+  <circle cx="256" cy="700" r="370" fill="none" stroke="#d2a857" stroke-width="3.5" opacity=".95"/>
+  <!-- Embers of the old world still glowing on the night side -->
+  <g fill="#e08a3c">
+    <circle cx="200" cy="356" r="2.2" opacity=".55"/><circle cx="236" cy="349" r="1.6" opacity=".45"/><circle cx="300" cy="352" r="2" opacity=".5"/>
+    <circle cx="334" cy="362" r="1.5" opacity=".4"/><circle cx="170" cy="368" r="1.4" opacity=".35"/>
+  </g>
+
+  <!-- Ashes rising, cooling into stars -->
+  <g>
+    <circle cx="244" cy="306" r="4.2" fill="#e08a3c" opacity=".75"/>
+    <circle cx="228" cy="284" r="3.4" fill="#e39a48" opacity=".65"/>
+    <circle cx="258" cy="268" r="3.6" fill="#e6a955" opacity=".7"/>
+    <circle cx="236" cy="246" r="3.1" fill="#e8b766" opacity=".65"/>
+    <circle cx="214" cy="226" r="3.4" fill="#ebc57d" opacity=".7"/>
+    <circle cx="246" cy="214" r="2.8" fill="#eed29a" opacity=".7"/>
+    <circle cx="222" cy="196" r="3.1" fill="#f1dfb8" opacity=".75"/>
+    <circle cx="198" cy="210" r="2.2" fill="#f1dfb8" opacity=".6"/>
+    <circle cx="236" cy="176" r="2.5" fill="#f3e9d4" opacity=".8"/>
+    <circle cx="210" cy="252" r="2.2" fill="#e8b766" opacity=".5"/>
+  </g>
+
+  <!-- The climb: a trajectory from the Earth to a new star -->
+  <path d="M232 334 C 246 270, 280 210, 338 156" fill="none" stroke="url(#path)" stroke-width="6.5" stroke-linecap="round"/>
+
+  <!-- The new star -->
+  <circle cx="344" cy="150" r="58" fill="url(#glow)"/>
+  <path d="M344 104 L352.5 141.5 L390 150 L352.5 158.5 L344 196 L335.5 158.5 L298 150 L335.5 141.5 Z" fill="#fff6e2"/>
+  <circle cx="344" cy="150" r="5" fill="#ffffff"/>
 </svg>
