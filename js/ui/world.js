@@ -17,6 +17,21 @@
     while (n && !n.alive && n.annexedBy && guard++ < 30) n = E.nation(n.annexedBy);
     return n && n.alive ? n : null;
   }
+  function lighten(hex, t) {
+    var c = parseInt(hex.slice(1), 16), r = c >> 16, g = (c >> 8) & 255, b = c & 255;
+    function m(x) { return Math.round(x + (255 - x) * t); }
+    return 'rgb(' + m(r) + ',' + m(g) + ',' + m(b) + ')';
+  }
+  // Faint latitude/longitude lines and ocean names, drawn under the nations.
+  function graticule() {
+    var d = '';
+    for (var lon = -150; lon <= 150; lon += 30) { var x = (lon + 180) / 360 * MAP.w; d += 'M' + x + ',0V' + MAP.h; }
+    for (var lat = -60; lat <= 60; lat += 30) { var y = (90 - lat) / 180 * MAP.h; d += 'M0,' + y + 'H' + MAP.w; }
+    var seas = [['Pacific Ocean', -145, 8], ['Pacific Ocean', 168, -18], ['Atlantic Ocean', -38, 24], ['Atlantic Ocean', -18, -22], ['Indian Ocean', 78, -24], ['Arctic Ocean', 10, 82], ['Southern Ocean', 40, -58]];
+    return '<path class="graticule" d="' + d + '"/>' +
+      '<path class="equator" d="M0,' + MAP.h / 2 + 'H' + MAP.w + '"/>' +
+      seas.map(function (x) { return '<text class="sea-label" x="' + ((x[1] + 180) / 360 * MAP.w).toFixed(1) + '" y="' + ((90 - x[2]) / 180 * MAP.h).toFixed(1) + '">' + x[0] + '</text>'; }).join('');
+  }
   function diploColor(n) {
     var me = E.pn();
     if (n === me) return '#4fc3f7';
@@ -37,17 +52,21 @@
     // so shared province edges do not show as seams; a second layer draws only outer borders.
     var byOwner = {};
     (s.prov || []).forEach(function (o, i) { if (o) (byOwner[o] = byOwner[o] || []).push(i); });
-    var fills = '', lines = '';
+    var fills = '', lines = '', glow = '', landW = {};
+    Object.keys(byOwner).forEach(function (oid) { landW[oid] = byOwner[oid].reduce(function (a, i) { return a + MAP.provinces[i].w; }, 0); });
     Object.keys(byOwner).forEach(function (oid) {
       var o = E.nation(oid);
       if (!o || !o.alive) return;
       var fill = mapMode === 'diplomacy' ? diploColor(o) : o.color;
       var war = o !== me && E.warBetween(me, o);
-      var stroke = o === me ? '#ffffff' : war ? '#ff3b30' : fill;
+      var stroke = o === me ? '#f1d08f' : war ? '#ff6b5e' : lighten(fill, 0.35);
       var d = byOwner[oid].map(function (i) { return MAP.provinces[i].d; }).join('');
       fills += '<path data-nation="' + oid + '" d="' + d + '" fill="' + fill + '" stroke="' + fill + '" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>';
       // Outer border only: the edge filter keeps a thin band along the outside of the owner's whole area.
-      lines += '<g filter="url(#map-edge)" opacity="' + (o === me ? 0.95 : war ? 0.9 : 0.7) + '"><path d="' + d + '" fill="' + stroke + '" stroke="' + stroke + '" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></g>';
+      var edge = '<g filter="url(#map-edge)" opacity="' + (o === me ? 1 : war ? 0.95 : 0.8) + '"><path d="' + d + '" fill="' + stroke + '" stroke="' + stroke + '" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></g>';
+      lines += edge;
+      // Your nation glows softly.
+      if (o === me) glow = '<g class="me-glow" filter="url(#map-glow)">' + edge + '</g>';
     });
     // Front lines: provinces occupied in ongoing wars, striped in the occupier's colour.
     var occ = '', pats = {};
@@ -62,14 +81,16 @@
     var patDefs = Object.keys(pats).map(function (id) {
       return '<pattern id="occ-' + id + '" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="6" fill="' + pats[id] + '" fill-opacity="0.75"/></pattern>';
     }).join('');
-    regions = '<g opacity="' + op + '">' + fills + '</g><g pointer-events="none">' + lines + '</g>' + (occ ? '<defs>' + patDefs + '</defs><g pointer-events="none">' + occ + '</g>' : '');
+    regions = '<g opacity="' + op + '">' + fills + '</g><g pointer-events="none">' + glow + lines + '</g>' + (occ ? '<defs>' + patDefs + '</defs><g pointer-events="none">' + occ + '</g>' : '');
     // Label priority: you first, then by GDP (used to hide overlapping labels).
     E.alive().slice().sort(function (a, b) { return (b === me) - (a === me) || b.gdp - a.gdp; }).forEach(function (n, pri) {
       var p = G.territory.center(n.id);
       if (!p) return;
       var atWar = E.atWar(n);
       if (n.id === 'SGP') regions += '<circle data-nation="SGP" class="map-dot" cx="' + p[0] + '" cy="' + p[1] + '" r="3" fill="' + (mapMode === 'diplomacy' ? diploColor(n) : n.color) + '" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"/>';
-      labels += '<text class="map-label' + (n === me ? ' me' : '') + (atWar ? ' atwar' : '') + '" data-nation="' + n.id + '" data-pri="' + pri + '" x="' + p[0] + '" y="' + p[1] + '" dy="' + (n.id === 'SGP' ? '-1em' : 0) + '">' + esc(n.short) + '</text>';
+            // Bigger countries get bigger names, like a printed atlas.
+      var scale = U.clamp(0.8 + Math.sqrt(landW[n.id] || 0) / 42, 0.85, 1.55).toFixed(2);
+      labels += '<text class="map-label' + (n === me ? ' me' : '') + (atWar ? ' atwar' : '') + '" style="font-size:calc(var(--fs, 12px) * ' + scale + ')" data-nation="' + n.id + '" data-pri="' + pri + '" x="' + p[0] + '" y="' + p[1] + '" dy="' + (n.id === 'SGP' ? '-1em' : 0) + '">' + esc(n.short) + '</text>';
     });
     // Conquered land away from the owner's own label gets its own name, e.g. "West China / USA-held".
     var nAlive = E.alive().length;
@@ -86,9 +107,11 @@
     return '<div class="map-wrap" id="map-wrap">' +
       '<svg id="world-map" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">' +
       '<defs><filter id="map-edge" x="-5%" y="-5%" width="110%" height="110%"><feMorphology id="map-erode" in="SourceAlpha" operator="erode" radius="1"/>' +
-      '<feComposite in="SourceGraphic" operator="out"/></filter></defs>' +
+      '<feComposite in="SourceGraphic" operator="out"/></filter>' +
+      '<filter id="map-glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.2"/></filter></defs>' +
       '<rect x="-2000" y="-2000" width="5000" height="4500" fill="#06101f"/>' +
-      '<image href="img/earth.jpg" x="0" y="0" width="' + MAP.w + '" height="' + MAP.h + '" preserveAspectRatio="none"/>' +
+      '<image class="map-earth" href="img/earth.jpg" x="0" y="0" width="' + MAP.w + '" height="' + MAP.h + '" preserveAspectRatio="none"/>' +
+      '<g pointer-events="none">' + graticule() + '</g>' +
       '<rect x="0" y="0" width="' + MAP.w + '" height="' + MAP.h + '" fill="#3a2f26" opacity="' + ash + '"/>' +
       '<path d="' + MAP.unclaimed + '" fill="#000" fill-opacity="0.15" stroke="#9aa4b2" stroke-opacity="0.35" stroke-width="0.6" vector-effect="non-scaling-stroke"/>' +
       '<g id="map-regions">' + regions + '</g><g id="map-labels">' + labels + '</g></svg>' +
@@ -117,6 +140,7 @@
       mapView.cx = U.clamp(mapView.cx, w / 2 - 20, MAP.w - w / 2 + 20);
       mapView.cy = h >= 420 ? 240 : U.clamp(mapView.cy, 15 + h / 2, 470 - h / 2);
       svg.setAttribute('viewBox', (mapView.cx - w / 2) + ' ' + (mapView.cy - h / 2) + ' ' + w + ' ' + h);
+      svg.classList.toggle('far', w > 470);
       // Keep label text the same size on screen at every zoom level.
       var k = w / cw, px = w > 450 ? 12 - Math.min(1, (w - 450) / 550) * 2.5 : 12;
       svg.style.setProperty('--fs', (px * k) + 'px');

@@ -38,8 +38,10 @@
       return rect(0, 0, 30, 20, '#003399') + rect(0, 16.2, 30, 1.2, '#fff') + ring(15, 8.3, 5, 12, 0.85, '#ffcc00');
     },
     RUS: function () {
-      return hstripes(['#fff', '#0039a6', '#d52b1e']) + '<path d="M15 4.6 l3 1.6 v3.4 c0 2.4 -1.6 3.8 -3 4.6 c-1.4 -0.8 -3 -2.2 -3 -4.6 v-3.4z" fill="#d4af37" stroke="#7a5c00" stroke-width="0.3"/>' +
-        '<path d="M15 6.3 l1.6 0.9 v2.1 c0 1.3 -0.8 2.1 -1.6 2.6 c-0.8 -0.5 -1.6 -1.3 -1.6 -2.6 v-2.1z" fill="#d52b1e"/>';
+      // Tricolour with a gold double-headed eagle on a red shield.
+      return hstripes(['#fff', '#0039a6', '#d52b1e']) +
+        '<path d="M15 6.2c-.7-.9-1.8-1.4-3-1.2.6.4.9.9 1 1.5-1-.3-2-.2-2.8.3 1 .3 1.6.9 1.9 1.7-.8.1-1.5.5-1.9 1.1 1.1 0 2 .4 2.6 1.1l.5 2.6c.6.8 1.1 1.5 1.7 2.1.6-.6 1.1-1.3 1.7-2.1l.5-2.6c.6-.7 1.5-1.1 2.6-1.1-.4-.6-1.1-1-1.9-1.1.3-.8.9-1.4 1.9-1.7-.8-.5-1.8-.6-2.8-.3.1-.6.4-1.1 1-1.5-1.2-.2-2.3.3-3 1.2z" fill="#d4af37" stroke="#8a6d1c" stroke-width="0.2"/>' +
+        '<path d="M13.9 8.9h2.2v2c0 .8-.5 1.4-1.1 1.7-.6-.3-1.1-.9-1.1-1.7z" fill="#d52b1e" stroke="#8a6d1c" stroke-width="0.15"/>';
     },
     CHN: function () {
       return rect(0, 0, 30, 20, '#de2910') + star(5, 5, 3, '#ffde00') +
@@ -59,19 +61,21 @@
       return hstripes(['#ce1126', '#000', '#078930']) + rect(0, 6.67, 30, 0.5, '#fcd116') + rect(0, 12.83, 30, 0.5, '#fcd116') + star(15, 10, 3.6, '#fcd116');
     },
     SAC: function () {
-      var dots = '';
-      [[13, 9.2], [15.6, 8.6], [17.4, 10.4], [14.2, 11.4], [16, 12.2], [12.8, 10.9], [15, 9.9]].forEach(function (p) { dots += circle(p[0], p[1], 0.35, '#fff'); });
-      return rect(0, 0, 30, 20, '#009b3a') + '<polygon points="15,2.2 27,10 15,17.8 3,10" fill="#fedf00"/>' + circle(15, 10, 4.3, '#002776') +
-        '<path d="M10.9 9.2 q4.1 -1.6 8.3 0.6" stroke="#fff" stroke-width="0.6" fill="none"/>' + dots;
+      // Green over blue, divided by a gold band, with the Southern Cross on the blue.
+      return rect(0, 0, 30, 20, '#0b7a43') + '<polygon points="0,20 0,12 30,4 30,20" fill="#123f8c"/>' +
+        '<polygon points="0,12 30,4 30,6.2 0,14.2" fill="#f2c230"/>' +
+        star(20, 9.6, 1.25, '#fff') + star(23.6, 12.6, 1.25, '#fff') + star(17.2, 13.4, 1.1, '#fff') + star(20.8, 16.8, 1.35, '#fff') + star(21.6, 13.6, 0.6, '#fff');
     },
     TUR: function () {
       return rect(0, 0, 30, 20, '#00afca') + rect(0, 0, 4, 20, '#e30a17') + crescent(15, 10, 4.2, '#fff', '#00afca', 1.1) + star(19.6, 10, 1.6, '#fff', Math.PI / 2);
     },
     GULF: function () {
-      return hstripes(['#007a3d', '#fff', '#000']) + '<polygon points="0,0 9,10 0,20" fill="#ce1126"/>' + circle(3.4, 10, 1.6, '#f6c445');
+      return hstripes(['#007a3d', '#fff', '#000']) + '<polygon points="0,0 9,10 0,20" fill="#ce1126"/>' + circle(3.6, 10, 1.7, '#f6c445') + circle(4.2, 10, 1.45, '#ce1126');
     },
     MESO: function () {
-      return vstripes(['#006847', '#fff', '#ce1126']) + rect(10, 7.5, 10, 5, '#0f47af') + star(15, 10, 1.9, '#fff');
+      var r = '';
+      for (var i = 0; i < 12; i++) { var a = Math.PI * 2 * i / 12; r += '<line x1="' + (15 + Math.cos(a) * 2.3).toFixed(2) + '" y1="' + (10 + Math.sin(a) * 2.3).toFixed(2) + '" x2="' + (15 + Math.cos(a) * 3.6).toFixed(2) + '" y2="' + (10 + Math.sin(a) * 3.6).toFixed(2) + '" stroke="#c9972e" stroke-width="0.55" stroke-linecap="round"/>'; }
+      return vstripes(['#006847', '#fff', '#ce1126']) + r + circle(15, 10, 2, '#e0aa3e') + circle(15, 10, 1.25, '#0f47af') + star(15, 10, 0.9, '#fff');
     },
     AUS: function () {
       return rect(0, 0, 30, 20, '#012169') + '<polygon points="0,0 8,10 0,20" fill="#ff8200"/>' +
@@ -99,10 +103,20 @@
     return hstripes([n.color || '#888', '#fff', n.color || '#888']) + star(15, 10, 2.6, n.color || '#888');
   }
 
+  // Cloth shading: soft vertical folds plus a light sheen, so flags read as fabric, not clip art.
+  var SHADE = '<defs><linearGradient id="flag-fold" x1="0" x2="1" y1="0" y2="0">' +
+    '<stop offset="0" stop-color="#000" stop-opacity=".14"/><stop offset=".18" stop-color="#fff" stop-opacity=".06"/>' +
+    '<stop offset=".42" stop-color="#000" stop-opacity=".06"/><stop offset=".66" stop-color="#fff" stop-opacity=".07"/>' +
+    '<stop offset=".88" stop-color="#000" stop-opacity=".04"/><stop offset="1" stop-color="#000" stop-opacity=".16"/></linearGradient>' +
+    '<linearGradient id="flag-sheen" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".09"/>' +
+    '<stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".1"/></linearGradient></defs>';
+  var OVER = '<rect width="30" height="20" fill="url(#flag-fold)"/><rect width="30" height="20" fill="url(#flag-sheen)"/>' +
+    '<rect x=".15" y=".15" width="29.7" height="19.7" fill="none" stroke="#000" stroke-opacity=".25" stroke-width=".3"/>';
+
   G.flags = {
     svg: function (n, cls) {
       var body = FLAGS[n.id] ? FLAGS[n.id]() : generic(n);
-      return '<svg class="flag ' + (cls || '') + '" viewBox="0 0 30 20" preserveAspectRatio="none" aria-label="Flag of ' + n.name.replace(/"/g, '') + '">' + body + '</svg>';
+      return '<svg class="flag ' + (cls || '') + '" viewBox="0 0 30 20" preserveAspectRatio="none" aria-label="Flag of ' + n.name.replace(/"/g, '') + '">' + SHADE + body + OVER + '</svg>';
     }
   };
 })();
