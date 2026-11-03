@@ -221,7 +221,7 @@ label.field { display: block; margin: 18px 0 7px; font-size: 10.5px; color: var(
   paint-order: stroke; stroke: rgba(6, 10, 16, .72); stroke-width: var(--sw, 3px); stroke-linejoin: round; cursor: pointer; transition: opacity .2s; }
 .map-label.me { fill: #f1d08f; }
 .map-label.atwar { fill: #ffb1a8; }
-.map-label.region { font-weight: 500; font-style: italic; letter-spacing: .06em; text-transform: none; }
+.map-label.region { font-size: calc(var(--fs, 12px) * 0.95); }
 .map-label .sub { font-size: 0.78em; font-weight: 600; fill: #c9d1dc; font-style: normal; letter-spacing: .1em; text-transform: uppercase; }
 .map-label.me .sub { fill: #ead3a2; }
 .map-earth { filter: saturate(.62) brightness(.82) contrast(1.06); }
