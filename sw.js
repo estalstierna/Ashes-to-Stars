@@ -1,9 +1,9 @@
 // Offline cache. Bump VERSION when files change so phones pick up updates.
-var VERSION = 'ats-v41';
+var VERSION = 'ats-v42';
 var FILES = [
   './', './index.html', './css/style.css', './manifest.webmanifest',
   './js/util.js', './js/names.js', './js/data.js', './js/lore.js', './js/flags.js', './js/engine.js', './js/military.js', './js/research.js', './js/laws.js', './js/character.js', './js/mapdata.js', './js/territory.js', './js/actions.js', './js/events.js', './js/events-extra.js', './js/war.js', './js/space.js', './js/colonies.js', './js/cabinet.js', './js/intel.js', './js/council.js', './js/ui/kit.js', './js/ui/home.js', './js/ui/government.js', './js/ui/actions.js', './js/ui/economy.js', './js/ui/military.js', './js/ui/world.js', './js/ui/science.js', './js/ui/space.js', './js/ui/news.js', './js/ui/main.js',
-  './img/earth.jpg', './img/flags/USA.jpg', './img/flags/EF.jpg', './img/flags/RUS.jpg', './img/flags/CHN.jpg', './img/flags/IND.jpg', './img/flags/PAC.jpg', './img/flags/PAU.jpg', './img/flags/SAC.jpg', './img/flags/TUR.jpg', './img/flags/GULF.jpg', './img/flags/MESO.jpg', './img/flags/AUS.jpg', './img/flags/CAS.jpg', './img/flags/SIB.jpg', './img/flags/NRD.jpg', './img/flags/SGP.jpg',
+  './img/earth.jpg', './img/flags/USA.jpg', './img/flags/EF.jpg', './img/flags/RUS.jpg', './img/flags/CHN.jpg', './img/flags/IND.jpg', './img/flags/PAC.jpg', './img/flags/PAU.jpg', './img/flags/SAC.jpg', './img/flags/TUR.jpg', './img/flags/GULF.jpg', './img/flags/MESO.jpg', './img/flags/AUS.jpg', './img/flags/CAS.jpg', './img/flags/SIB.jpg', './img/flags/NRD.jpg', './img/flags/SGP.jpg', './img/flags/ATL.jpg', './img/flags/MEK.jpg', './img/flags/MAG.jpg', './img/flags/SAF.jpg',
   './icons/icon-64.png', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'
 ];
 self.addEventListener('install', function (e) {

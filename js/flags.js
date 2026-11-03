@@ -140,7 +140,7 @@
 
   G.flags = {
     // Painted flags (img/flags/<id>.jpg) for the starting nations; drawn SVG for anything else.
-    IMAGES: ['USA', 'EF', 'RUS', 'CHN', 'IND', 'PAC', 'PAU', 'SAC', 'TUR', 'GULF', 'MESO', 'AUS', 'CAS', 'SIB', 'NRD', 'SGP'],
+    IMAGES: ['USA', 'EF', 'RUS', 'CHN', 'IND', 'PAC', 'PAU', 'SAC', 'TUR', 'GULF', 'MESO', 'AUS', 'CAS', 'SIB', 'NRD', 'SGP', 'ATL', 'MEK', 'MAG', 'SAF'],
     svg: function (n, cls) {
       if (G.flags.IMAGES.indexOf(n.id) >= 0)
         return '<img class="flag ' + (cls || '') + '" src="img/flags/' + n.id + '.jpg" alt="Flag of ' + n.name.replace(/"/g, '') + '" draggable="false">';
