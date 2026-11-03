@@ -140,10 +140,11 @@
 
   G.flags = {
     // Painted flags (img/flags/<id>.jpg) for the starting nations; drawn SVG for anything else.
+    VERSION: 3, // bump when flag images change, so phones fetch the new ones
     IMAGES: ['USA', 'EF', 'RUS', 'CHN', 'IND', 'PAC', 'PAU', 'SAC', 'TUR', 'GULF', 'MESO', 'AUS', 'CAS', 'SIB', 'NRD', 'SGP', 'ATL', 'MEK', 'MAG', 'SAF'],
     svg: function (n, cls) {
       if (G.flags.IMAGES.indexOf(n.id) >= 0)
-        return '<img class="flag ' + (cls || '') + '" src="img/flags/' + n.id + '.jpg" alt="Flag of ' + n.name.replace(/"/g, '') + '" draggable="false">';
+        return '<img class="flag ' + (cls || '') + '" src="img/flags/' + n.id + '.jpg?v=' + G.flags.VERSION + '" alt="Flag of ' + n.name.replace(/"/g, '') + '" draggable="false">';
       var body = FLAGS[n.id] ? FLAGS[n.id]() : generic(n);
       return '<svg class="flag ' + (cls || '') + '" viewBox="0 0 30 20" preserveAspectRatio="none" aria-label="Flag of ' + n.name.replace(/"/g, '') + '">' + SHADE + body + OVER + '</svg>';
     }
