@@ -68,7 +68,7 @@ G.research = (function () {
   function rate(n) {
     var f = E().funds(n), g = E().gov(n);
     var ratio = E().sat(f.sci / n.gdp, 0.05) * 1.1; // diminishing returns on science spending
-    return ratio * 1800 * g.sci * (1 + Math.max(0, Math.log10(n.gdp / 500)) * 0.25) * Math.sqrt(n.tech / 80) * (1 + bonus(n, 'research') + G.laws.fx(n, 'research') + G.cabinet.fx(n, 'research'));
+    return ratio * 1800 * g.sci * (1 + Math.max(0, Math.log10(n.gdp / 500)) * 0.25) * Math.sqrt(n.tech / 80) * (1 + bonus(n, 'research') + G.laws.fx(n, 'research') + G.cabinet.fx(n, 'research') + (G.council ? G.council.fx(n, 'research') : 0));
   }
 
   function state(n, t) {

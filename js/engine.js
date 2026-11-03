@@ -1169,6 +1169,8 @@ G.engine = (function () {
       threatYear();
       if (G.space) G.space.year();
       if (G.cabinet) G.cabinet.year();
+      if (G.intel) G.intel.year();
+      if (G.council) G.council.year();
       rebellions();
       if (G.events.worldNews) G.events.worldNews();
       aiLeaders();

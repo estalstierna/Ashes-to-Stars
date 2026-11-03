@@ -268,6 +268,38 @@
         }).join('') + '<div class="small muted">Higher with better relations, if they dislike the attacker, and if together you can win. Lower if they are busy in other wars or have a pact with the attacker.</div></div>';
     }
 
+    // World Council
+    var CO = G.council, c = CO.C(), lead = E.isLeader();
+    h += '<div class="card"><h3>World Council</h3>';
+    if (c.pending) {
+      var t = CO.tally(c.pending);
+      h += '<div class="small muted">Vote in ' + Math.max(1, c.pending.year + 1 - s.year) + ' year' + (c.pending.year + 1 - s.year > 1 ? 's' : '') + (c.pending.by ? ' · tabled by ' + esc(E.nation(c.pending.by).short) : '') + '</div>' +
+        '<div style="font-weight:600;margin:4px 0">' + esc(CO.title(c.pending)) + '</div><div class="small muted" style="margin-bottom:8px">' + esc(CO.desc(c.pending)) + '</div>' +
+        '<div class="row small"><span class="good">For ' + t.yes.length + '</span><span class="muted">Abstain ' + t.abstain.length + '</span><span class="bad">Against ' + t.no.length + '</span></div>' +
+        bar(t.wYes / Math.max(1, t.wYes + t.wNo) * 100, t.passes ? 'good' : 'bad') +
+        '<div class="small muted">Forecast: <b class="' + (t.passes ? 'good' : 'bad') + '">' + (t.passes ? 'passes' : 'fails') + '</b> (votes weighted by economic size). ' +
+        'For: ' + t.yes.map(function (x) { return esc(x.short); }).join(', ') + (t.no.length ? '. Against: ' + t.no.map(function (x) { return esc(x.short); }).join(', ') : '') + '.</div>' +
+        (lead ? '<button class="btn sm blue" style="margin-top:8px" data-act="doaction" data-arg="council-lobby">Lobby</button>' : '');
+    } else {
+      h += '<div class="small muted">No resolution on the table. The next one is expected around ' + c.next + '.</div>' +
+        (lead ? '<button class="btn sm blue" style="margin-top:8px" data-act="doaction" data-arg="council-propose">Table a resolution</button>' : '');
+    }
+    var act = c.active.filter(function (x) { return x.until > s.year; });
+    if (act.length) h += '<h3 style="margin-top:12px">In force</h3>' + act.map(function (x) { return '<div class="row small" style="padding:3px 0"><span>' + esc(x.title) + '</span><span class="muted">' + (x.until - s.year) + ' yr left</span></div>'; }).join('');
+    if (c.history.length) h += '<h3 style="margin-top:12px">Past votes</h3>' + c.history.slice(0, 5).map(function (x) { return '<div class="row small" style="padding:3px 0"><span>' + x.y + ' · ' + esc(x.title) + '</span><span class="' + (x.passed ? 'good' : 'bad') + '">' + (x.passed ? 'Passed' : 'Failed') + '</span></div>'; }).join('');
+    h += '</div>';
+
+    // Intelligence
+    var I = G.intel;
+    h += '<div class="card"><h3>Intelligence</h3><div class="grid2">' + stat('Your agency', Math.round(I.ensure(me)) + ' / 100') +
+      stat('Counter-intelligence', I.counter(me) ? '<span class="good">Active until ' + me.counter + '</span>' : '<span class="muted">Off</span>') + '</div>' +
+      '<div class="small muted" style="margin:8px 0 4px">Strongest agencies</div>' +
+      E.alive().slice().sort(function (a, b) { return I.ensure(b) - I.ensure(a); }).slice(0, 5).map(function (x) {
+        return '<div class="row small" style="padding:2px 0"><span>' + G.flags.svg(x, 'mini') + esc(x.short) + '</span><b>' + Math.round(I.ensure(x)) + '</b></div>';
+      }).join('') +
+      ((s.intelLog || []).length ? '<div class="small muted" style="margin:10px 0 4px">Recent operations</div>' + s.intelLog.slice(0, 6).map(function (x) { return '<div class="small" style="padding:2px 0">' + x.y + ' · ' + esc(x.t) + '</div>'; }).join('') : '') +
+      '<div class="small muted" style="margin-top:8px">Run operations from the Actions tab or from a nation\'s page. Success depends on your agency against theirs and on the support of your intelligence services.</div></div>';
+
     // Treaty types
     h += '<div class="card"><h3>Treaty types</h3>' +
       '<div class="small" style="margin-bottom:8px"><b>🕊️ Non-aggression pact</b>: neither side attacks the other (lasts 15 years). Also signed automatically after a peace treaty.</div>' +
@@ -347,10 +379,16 @@
       K.treasuryStat(n) + stat('Tax take', Math.round(n.tax * 100) + '% of GDP') + '</div>' +
       '<p class="small" style="margin-top:10px">' + (wars.length ? '⚔️ At war with ' + wars.join(', ') : 'At peace') + '</p>' +
       (pacts.length ? '<p class="small">🤝 ' + pacts.join(' · ') + '</p>' : '') +
+      (function () {
+        var by = (S().sanctions || []).filter(function (x) { return x.target === n.id && x.until > S().year; }).map(function (x) { return E.nation(x.by).short; });
+        if (G.council.C().active.some(function (x) { return x.type === 'sanctions' && x.target === n.id && x.until > S().year; })) by.unshift('the World Council');
+        return by.length ? '<p class="small bad">🚫 Under sanctions by ' + by.join(', ') + '</p>' : '';
+      })() +
       (!self ? '<p class="small">Relations with you: <b>' + Math.round(E.relation(me, n)) + '</b> · Neighbour: ' + (me.neighbors.indexOf(n.id) >= 0 ? 'yes' : 'no') + '</p>' : '');
     if (!self && E.isLeader()) {
       var dip = [['envoy', 'Send envoys'], ['trade', 'Trade agreement'], ['nap', 'Non-aggression pact'], ['defpact', 'Propose defensive pact'],
-        ['alliance', E.allianceType(me, n) === 'defensive' ? 'Upgrade to full alliance' : 'Propose full alliance'], ['breakally', 'Cancel alliance / pact'], ['tribute', 'Demand tribute'], ['war', 'Declare war'], ['offensive', 'Major offensive'], ['peace', 'Propose peace']];
+        ['alliance', E.allianceType(me, n) === 'defensive' ? 'Upgrade to full alliance' : 'Propose full alliance'], ['breakally', 'Cancel alliance / pact'], ['sanction', 'Impose sanctions'], ['tribute', 'Demand tribute'], ['war', 'Declare war'], ['offensive', 'Major offensive'], ['peace', 'Propose peace']];
+      ['steal', 'sabotage', 'military', 'unrest', 'coup'].forEach(function (op) { dip.push(['spy-' + op, '🕵 ' + G.intel.OPS[op].name + ' (' + Math.round(G.intel.chance(me, n, op) * 100) + '%)']); });
       var avail = A.available();
       dip.forEach(function (d) {
         var a = avail.filter(function (x) { return x.id === d[0]; })[0];

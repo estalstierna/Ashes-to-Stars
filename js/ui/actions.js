@@ -48,8 +48,11 @@
         html += ts.map(function (g) { return '<button class="choice" data-act="target" data-arg="' + id + '|' + g + '"><div class="t">' + D.govs[g].name + '</div><div class="d">' + esc(D.govs[g].desc) + '</div></button>'; }).join('');
       } else {
         html += ts.map(function (t) {
-          return '<button class="choice" data-act="target" data-arg="' + id + '|' + t.id + '"><div class="t"><span class="dot" style="background:' + t.color + '"></span>' + esc(t.name) + '</div>' +
-            '<div class="d">Military ' + U.num(E.power(t)) + ' (you ' + U.num(E.power(n)) + ') · Relations ' + Math.round(E.relation(n, t)) + '</div></button>';
+          if (!t.color) return '<button class="choice" data-act="target" data-arg="' + id + '|' + t.id + '"><div class="t">' + esc(t.name) + '</div><div class="d">' + esc(t.desc || '') + '</div></button>';
+          var info = a.op ? 'Success ' + Math.round(G.intel.chance(n, t, a.op) * 100) + '% · their agency ' + Math.round(G.intel.ensure(t)) + ' (yours ' + Math.round(G.intel.ensure(n)) + ')' + (G.intel.counter(t) ? ' · on alert' : '') :
+            'Military ' + U.num(E.power(t)) + ' (you ' + U.num(E.power(n)) + ')';
+          return '<button class="choice" data-act="target" data-arg="' + id + '|' + t.id + '"><div class="t">' + G.flags.svg(t, 'mini') + esc(t.name) + '</div>' +
+            '<div class="d">' + info + ' · Relations ' + Math.round(E.relation(n, t)) + '</div></button>';
         }).join('');
       }
       html += '<button class="btn" data-act="close">Cancel</button>';

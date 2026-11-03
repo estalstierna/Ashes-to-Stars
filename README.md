@@ -51,6 +51,8 @@ A text-based grand strategy RPG for mobile browsers.
   - Betraying an attacked partner breaks the treaty. Declining to join an attack only cools relations.
   - The player gets a call to arms when a partner is attacked, and a request to join when a full ally attacks someone.
   - The Diplomacy view lists your treaties, the chance each partner would defend you against your worst rival, and all alliances in the world.
+- **World Council:** every few years a resolution (sanctions, ceasefires, climate, science, aid, arms limits, orbital weapons) is tabled, debated for a year and voted on, weighted by economic size. Table your own and lobby for or against.
+- **Intelligence:** steal technology, sabotage industry or the military, incite unrest or back a coup, with success chances based on agency strength. Hostile nations spy on you too; counter-intelligence catches them. Unilateral sanctions as well.
 - **Taxes:** income, corporate, wealth and consumption tax, each with its own revenue and its own effect on growth, approval and the support of business and the people.
 - **Economy:** set taxes and spending per sector (military, economy, welfare, science, space) and see your surplus or deficit live. Deficits become national debt, with interest that rises as debt grows. Also trade agreements and Earth restoration.
 - **Space tab:**

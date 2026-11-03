@@ -260,6 +260,48 @@ G.actions = (function () {
         E.log('💔 ' + n.name + ' ends its treaty with ' + t.name + '.', 'player');
         return 'The treaty with ' + t.name + ' is over.';
       } },
+    { id: 'sanction', cd: 3, cat: 'Diplomacy', role: 'leader', name: 'Impose sanctions', cost: 0.002, target: 'sanctionable',
+      desc: 'Cut trade with a nation: its growth −0.6% for 5 years (yours −0.1%), trade deals end, relations −20. Friends who dislike them may join in.',
+      run: function (id) {
+        var n = N(), t = E.nation(id), joined = [];
+        E.addMod(t, 'growth', -0.006, 5); E.addMod(n, 'growth', -0.001, 5); E.changeRel(n, t, -20);
+        S().pacts = S().pacts.filter(function (p) { return !(p.type === 'trade' && ((p.a === n.id && p.b === t.id) || (p.a === t.id && p.b === n.id))); });
+        E.alive().forEach(function (x) {
+          if (x === n || x === t || E.allied(x, t) || E.relation(x, n) < 20 || E.relation(x, t) > 0) return;
+          if (U.chance(0.5)) { E.addMod(t, 'growth', -0.003, 5); E.changeRel(x, t, -10); joined.push(x.short); }
+        });
+        S().sanctions = (S().sanctions || []).filter(function (x) { return x.until > S().year; });
+        S().sanctions.push({ by: n.id, target: t.id, until: S().year + 5, with: joined });
+        E.chron(t, 'Sanctioned by ' + n.name);
+        E.log('🚫 ' + n.name + ' imposes sanctions on ' + t.name + (joined.length ? ', joined by ' + joined.join(', ') : '') + '.', 'player');
+        return t.name + ' is under sanctions' + (joined.length ? '. ' + joined.join(', ') + ' join in.' : '. Nobody else joins, for now.');
+      } },
+    // ----- Leader: World Council -----
+    { id: 'council-propose', cd: 6, cat: 'World Council', role: 'leader', name: 'Table a resolution', cost: 0.002, target: 'resolution',
+      cond: function () { return G.council && !G.council.C().pending; },
+      desc: 'Put a resolution before the World Council. It is debated for a year, then voted on.',
+      run: function (k) { var r = G.council.fromKey(k); G.council.table(r, N().id); return 'Your resolution "' + G.council.title(r) + '" will be voted on next year. Lobby to win votes.'; } },
+    { id: 'council-lobby', cat: 'World Council', role: 'leader', name: 'Lobby the World Council', cost: 0.003, target: 'lobby',
+      cond: function () { return G.council && !!G.council.C().pending; },
+      desc: 'Work the corridors on the pending resolution. Nations that like you are swayed most. Can be repeated each turn.',
+      run: function (dir) { var r = G.council.C().pending; r.lobby += dir === 'for' ? 1 : -1; var t = G.council.tally(r); return 'Diplomats fan out. Current count: ' + t.yes.length + ' for, ' + t.no.length + ' against, ' + t.abstain.length + ' abstaining.'; } },
+    // ----- Leader: Intelligence -----
+    { id: 'spy-steal', cd: 2, cat: 'Intelligence', role: 'leader', name: 'Steal technology', cost: 0.003, target: 'spy', op: 'steal',
+      desc: '', run: function (id) { return G.intel.run('steal', id); } },
+    { id: 'spy-sabotage', cd: 3, cat: 'Intelligence', role: 'leader', name: 'Sabotage industry', cost: 0.004, target: 'spy', op: 'sabotage',
+      desc: '', run: function (id) { return G.intel.run('sabotage', id); } },
+    { id: 'spy-military', cd: 3, cat: 'Intelligence', role: 'leader', name: 'Sabotage the military', cost: 0.004, target: 'spy', op: 'military',
+      desc: '', run: function (id) { return G.intel.run('military', id); } },
+    { id: 'spy-unrest', cd: 3, cat: 'Intelligence', role: 'leader', name: 'Incite unrest', cost: 0.003, target: 'spy', op: 'unrest',
+      desc: '', run: function (id) { return G.intel.run('unrest', id); } },
+    { id: 'spy-coup', cd: 8, cat: 'Intelligence', role: 'leader', name: 'Back a coup', cost: 0.01, target: 'spy', op: 'coup',
+      desc: '', run: function (id) { return G.intel.run('coup', id); } },
+    { id: 'spy-counter', cd: 4, cat: 'Intelligence', role: 'leader', name: 'Counter-intelligence sweep', cost: 0.003,
+      desc: 'Hunt foreign agents for 5 years: their operations fail more often and are far more likely to be caught.',
+      run: function () { N().counter = S().year + 5; G.character.change('intel', 2); return 'Your security services start turning over every stone.'; } },
+    { id: 'spy-expand', cd: 3, cat: 'Intelligence', role: 'leader', name: 'Expand the intelligence agency', cost: 0.006,
+      desc: 'More agents, analysts and satellites: agency strength +10, which makes every operation more likely to succeed.',
+      run: function () { var n = N(); G.intel.ensure(n); n.spy = Math.min(100, n.spy + 10); G.character.change('intel', 3); return 'The agency grows. Strength is now ' + Math.round(n.spy) + '.'; } },
     { id: 'tribute', cat: 'Diplomacy', role: 'leader', name: 'Demand tribute', cost: 0, target: 'weaker',
       desc: 'Threaten a much weaker nation into paying you. They might refuse, and they will hate you.',
       run: function (id) {
@@ -440,6 +482,10 @@ G.actions = (function () {
       case 'nap': return all.filter(function (x) { return !E.warBetween(n, x) && !E.hasPact(n, x, 'nap'); });
       case 'weaker': return all.filter(function (x) { return E.power(n) > E.power(x) * 1.5 && !E.warBetween(n, x) && !E.allied(n, x); });
       case 'other': return all;
+      case 'sanctionable': return all.filter(function (x) { return !E.allied(n, x); });
+      case 'spy': return all;
+      case 'resolution': return G.council.playerOptions().map(function (r) { return { id: G.council.key(r), name: G.council.title(r), desc: G.council.desc(r) }; });
+      case 'lobby': var pr = G.council.C().pending; return pr ? [{ id: 'for', name: 'Lobby for "' + G.council.title(pr) + '"', desc: 'Win votes for it.' }, { id: 'against', name: 'Lobby against it', desc: 'Win votes against it.' }] : [];
       case 'gov': return Object.keys(G.data.govs).filter(function (g) { return g !== n.gov; });
       default: return null;
     }

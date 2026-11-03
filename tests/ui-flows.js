@@ -92,6 +92,35 @@ async function endTurn(page) {
     check(errors.length === 0, 'no page errors ' + errors.join('; '));
   }
 
+  console.log('World Council, sanctions and intelligence');
+  {
+    const { page, errors } = await newGame(browser, 'CHN', 'leader');
+    await page.evaluate(() => { G.uiKit.view.tab = 'world'; G.uiKit.view.world = 'diplo'; G.ui.render(); });
+    const txt = await page.textContent('#app');
+    check(txt.includes('World Council') && txt.includes('Intelligence') && txt.includes('Your agency'), 'diplomacy shows the council and intelligence');
+    // Table a resolution, lobby for it, then vote.
+    await page.click('[data-act=doaction][data-arg=council-propose]');
+    await page.click('#modal [data-act=target][data-arg^="council-propose|science"]');
+    check(await page.evaluate(() => !!G.state.council.pending && G.state.council.pending.type === 'science'), 'a resolution is tabled');
+    await page.click('[data-act=doaction][data-arg=council-lobby]');
+    await page.click('#modal [data-act=target][data-arg="council-lobby|for"]');
+    check(await page.evaluate(() => G.state.council.pending.lobby === 1), 'lobbying sways the vote');
+    await endTurn(page);
+    await clearModals(page);
+    check(await page.evaluate(() => !G.state.council.pending && G.state.council.history.length > 0), 'the council votes the next year');
+    // Spy operation and sanctions from a nation's page.
+    await page.evaluate(() => { G.state.ap = 2; G.state.used = []; G.uiKit.closeModal(); G.uiKit.handlers.nation('USA'); });
+    check(await page.$('#modal [data-act=target][data-arg="spy-steal|USA"]') !== null, 'nation page offers covert operations');
+    await page.click('#modal [data-act=target][data-arg="spy-steal|USA"]');
+    const msg = await page.textContent('#toast');
+    check(/Success|fails/.test(msg), 'the operation reports its outcome');
+    await page.evaluate(() => G.uiKit.handlers.nation('USA'));
+    await page.click('#modal [data-act=target][data-arg="sanction|USA"]');
+    await page.evaluate(() => G.uiKit.handlers.nation('USA'));
+    check((await page.textContent('#modal')).includes('Under sanctions by'), 'sanctions show on the nation page');
+    check(errors.length === 0, 'no page errors ' + errors.join('; '));
+  }
+
   console.log('Treaties and calls to arms');
   {
     const { page, errors } = await newGame(browser, 'NRD', 'leader');
