@@ -1,5 +1,5 @@
 // Offline cache. Bump VERSION when files change so phones pick up updates.
-var VERSION = 'ats-v33';
+var VERSION = 'ats-v34';
 var FILES = [
   './', './index.html', './css/style.css', './manifest.webmanifest',
   './js/util.js', './js/names.js', './js/data.js', './js/lore.js', './js/flags.js', './js/engine.js', './js/military.js', './js/research.js', './js/laws.js', './js/character.js', './js/mapdata.js', './js/territory.js', './js/actions.js', './js/events.js', './js/events-extra.js', './js/war.js', './js/space.js', './js/cabinet.js', './js/ui/kit.js', './js/ui/home.js', './js/ui/government.js', './js/ui/actions.js', './js/ui/economy.js', './js/ui/military.js', './js/ui/world.js', './js/ui/science.js', './js/ui/space.js', './js/ui/news.js', './js/ui/main.js',

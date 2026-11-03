@@ -67,11 +67,59 @@ G.space = (function () {
   function on(bodyId) { return list().filter(function (c) { return c.body === bodyId; }); }
   function unlocked(n, b) { return E().milestoneIndex(n) >= b.unlock; }
 
+  // Colony names drawn from each culture's own pool: its scientists, explorers, myths and
+  // space programmes. Names with a space stand alone; single words get a suffix (Base, Station...).
+  // `moon` and `mars` lists are used on those worlds, `any` everywhere.
+  var NAME_POOLS = {
+    anglo: { moon: ['Armstrong', 'Aldrin', 'Tranquility', 'Eagle', 'Apollo', 'Shepard'],
+      mars: ['Bradbury', 'New Houston', 'Sojourner', 'Curiosity', 'Perseverance', 'Ares'],
+      any: ['Sagan', 'Glenn', 'Ride', 'Goddard', 'Liberty', 'Discovery', 'Hubble', 'Johnson', 'Frontier', 'Columbia', 'Challenger', 'New Horizon'] },
+    euro: { moon: ['Galileo', 'Copernicus', 'Verne', 'Hergé'],
+      mars: ['Schiaparelli', 'Beagle', 'Rosalind Franklin', 'Nouvelle Lyon'],
+      any: ['Kepler', 'Huygens', 'Curie', 'Ariane', 'Columbus', 'Herschel', 'Rosetta', 'Leibniz', 'Nova Europa', 'Marconi', 'Cassini'] },
+    slavic: { moon: ['Luna', 'Lunokhod', 'Tsiolkovsky', 'Mechta'],
+      mars: ['Fobos', 'Krasnaya Zvezda', 'Mars-Grad'],
+      any: ['Gagarin', 'Korolev', 'Tereshkova', 'Leonov', 'Mir', 'Vostok', 'Soyuz', 'Novaya Zarya', 'Zvezda', 'Salyut', 'Buran'] },
+    chinese: { moon: ["Chang'e", 'Guanghan', 'Yutu', 'Queqiao', 'Wu Gang'],
+      mars: ['Zhurong', 'Tianwen', 'Yinghuo', 'Huoxing'],
+      any: ['Tiangong', 'Shenzhou', 'Kunlun', 'Penglai', 'Xihe', 'Kuafu', 'Shennong', 'Fuxi', 'Nuwa', 'Tianhe', 'Wentian', 'Mengtian', 'Taikong'] },
+    indian: { moon: ['Chandra', 'Vikram', 'Pragyan', 'Shiv Shakti', 'Soma'],
+      mars: ['Mangala', 'Mangalyaan'],
+      any: ['Aryabhata', 'Bhaskara', 'Kalpana', 'Sarabhai', 'Kalam', 'Gaganyaan', 'Varahamihira', 'Ramanujan', 'Surya', 'Antariksh', 'Nakshatra'] },
+    pacific: { moon: ['Kaguya', 'Tsukuyomi', 'Danuri', 'Dalnara'],
+      mars: ['Nozomi', 'Kasei', 'Hwaseong'],
+      any: ['Hayabusa', 'Akatsuki', 'Hikari', 'Hinode', 'Nuri', 'Hanbit', 'Shin-Edo', 'Mirai', 'Yamato', 'Arirang', 'Haneul', 'Kibo'] },
+    african: { moon: ['Nyota', 'Mwezi', 'Sankofa'],
+      mars: ['Mansa Musa', 'Kilimanjaro', 'Nubia'],
+      any: ['Ubuntu', 'Timbuktu', 'Aksum', 'Zimbabwe', 'Lalibela', 'Maathai', 'Mandela', 'Nkrumah', 'Harambee', 'Uhuru', 'Kush'] },
+    latin: { moon: ['Selene', 'Luna Nueva'],
+      mars: ['Nueva Esperanza', 'Bolívar'],
+      any: ['Libertad', 'Cruzeiro', 'San Martín', 'Amazonia', 'Cóndor', 'Vida Nueva', 'Neruda', 'Esperanza', 'Santos-Dumont', 'Andes'] },
+    turkic: { moon: ['Ay Yıldız', 'Aydın', 'Ulugh Beg'],
+      mars: ['Kızıl', 'Bozkurt'],
+      any: ['Tengri', 'Gök', 'Altay', 'Yıldız', 'Ergenekon', 'Turan', 'Kök Türk', 'Bilge', 'Semerkand', 'Orhun'] },
+    arabic: { moon: ['Al-Qamar', 'Hilal', 'Ibn Firnas'],
+      mars: ['Al-Amal', 'Al-Mirrikh', 'Hope'],
+      any: ['Al-Biruni', 'Ibn al-Haytham', 'Al-Sufi', 'Al-Khwarizmi', 'Rashid', 'Najm', 'Thuraya', 'Al-Battani', 'Suhail', 'Nur'] },
+    nordic: { moon: ['Måne', 'Mani', 'Tycho Brahe'],
+      mars: ['Bifröst', 'Asgard', 'Nordstjärnan'],
+      any: ['Celsius', 'Niels Bohr', 'Rømer', 'Birkeland', 'Nansen', 'Amundsen', 'Freya', 'Ymir', 'Valhalla', 'Aurora', 'Kalevala', 'Väinämöinen', 'Ørsted'] }
+  };
+  // Nations that share a culture with a bigger neighbour get pools of their own.
+  var NATION_POOLS = {
+    AUS: { moon: ['Woomera', 'Southern Cross'], mars: ['New Canberra', 'Uluru'], any: ['Endeavour', 'Kingsford', 'Parkes', 'Tidbinbilla', 'Coral Sea', 'Outback', 'Murray'] },
+    CAS: { moon: ['Rainier', 'Evergreen'], mars: ['New Seattle', 'Cascadia Nova'], any: ['Cascade', 'Olympia', 'Columbia Gorge', 'Hood', 'Salish', 'Douglas', 'Puget'] },
+    SIB: { moon: ['Baikal', 'Belka'], mars: ['Novosibirsk-2', 'Krasnoyarsk'], any: ['Taiga', 'Yenisei', 'Lena', 'Altai', 'Ob', 'Tunguska', 'Amur'] },
+    SGP: { moon: ['Merlion', 'Bulan'], mars: ['Temasek'], any: ['Raffles', 'Lion City', 'Marina', 'Bintang', 'Sentosa', 'Straits'] },
+    MESO: { moon: ['Metztli', 'Coyolxauhqui'], mars: ['Quetzal', 'Tenochtitlan'], any: ['Xochitl', 'Kukulcán', 'Tikal', 'Palenque', 'Itzamná', 'Copán', 'Juárez'] }
+  };
+  var SUFFIX = ['Base', 'Station', 'Colony', 'Settlement', 'Outpost'];
   function name(n, b) {
-    var base = { moon: ['Tranquility', 'Copernicus', 'Aristarchus', 'Peary', 'Tycho'], mars: ['Olympus', 'Hellas', 'Elysium', 'Valles', 'Jezero'],
-      ceres: ['Occator', 'Piazzi', 'Kerwan'], europa: ['Conamara', 'Pwyll', 'Thera'], ganymede: ['Uruk', 'Galileo', 'Tros'],
-      titan: ['Kraken', 'Ligeia', 'Xanadu'], venus: ['Aphrodite', 'Ishtar', 'Cytherea'], mercury: ['Caloris', 'Beethoven', 'Rembrandt'], proxima: ['New Dawn', 'Centauri', 'Second Earth'] }[b.id];
-    return U.pick(base) + ' ' + U.pick(['Base', 'Station', 'Haven', 'Colony', 'Settlement']) + ' (' + n.short + ')';
+    var pool = NATION_POOLS[n.id] || NAME_POOLS[n.culture] || NAME_POOLS.anglo;
+    var opts = (pool[b.id] || []).concat(pool.any);
+    var fresh = opts.filter(function (x) { return !list().some(function (c) { return c.name.indexOf(x) === 0; }); });
+    var pick = U.pick(fresh.length ? fresh : opts);
+    return pick.indexOf(' ') >= 0 ? pick : pick + ' ' + U.pick(SUFFIX);
   }
 
   function foundCost(n, b) { return n.gdp * b.cost * E().diff().cost; }
@@ -172,6 +220,14 @@ G.space = (function () {
       } }
     ] });
 
-  return { BODIES: BODIES, LEVELS: LEVELS, body: body, init: init, list: list, of: of, on: on, unlocked: unlocked, found: found, expand: expand,
+  // Older saves: colonies named '<Place> <Type> (<Nation>)' get a name from their culture's pool.
+  function renameOld() {
+    list().forEach(function (c) {
+      var n = c.nation && E().nation(c.nation), b = body(c.body);
+      if (n && b && / \([^)]+\)$/.test(c.name)) c.name = name(n, b);
+    });
+  }
+
+  return { renameOld: renameOld, NAME_POOLS: NAME_POOLS, BODIES: BODIES, LEVELS: LEVELS, body: body, init: init, list: list, of: of, on: on, unlocked: unlocked, found: found, expand: expand,
     canExpand: canExpand, foundCost: foundCost, expandCost: expandCost, growth: growth, year: year };
 })();

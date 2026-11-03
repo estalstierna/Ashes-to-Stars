@@ -1209,6 +1209,7 @@ G.engine = (function () {
         return n && n.alive ? n.id : null;
       });
       if (G.cabinet) G.cabinet.ensure();
+      if (G.space && st.colonies) G.space.renameOld();
       // Older saves: war strength baselines were measured in a different unit.
       st.wars.forEach(function (w) { if (!w.v2) { w.aStart = power(st.nations[w.a]); w.bStart = power(st.nations[w.b], true); w.v2 = true; } });
       return true;
