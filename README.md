@@ -6,7 +6,7 @@ A text-based grand strategy RPG for mobile browsers.
 
 ## Features (prototype v0.1)
 
-- **16 nations**, from superpowers (USA, European Federation, China, India) to new and small states (Nordic Confederation, Cascadia, Siberian Free Republic, Free City of Singapore…).
+- **20 nations**, from superpowers (USA, European Federation, China, India) to new and small states (Nordic Confederation, Atlantic Commonwealth, Mekong League, Maghreb Union, Southern African Federation, Cascadia, Siberian Free Republic, Free City of Singapore…).
 - **Flags and national history:** every nation has its own flag. Tap a nation to see its capital, motto, backstory and a timeline: events before 2077 plus everything that happens in your game (wars, peace treaties, alliances, new leaders, regime changes, annexations and space milestones).
 - **4 roles**:
   - **Head of State**: control the budget and run the nation.

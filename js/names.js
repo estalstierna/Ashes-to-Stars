@@ -3,6 +3,11 @@ var G = window.G || (window.G = {});
 
 G.names = (function () {
   var C = {
+    seasian: {
+      m: ['Minh', 'Anh', 'Duc', 'Somchai', 'Thanawat', 'Kyaw', 'Aung', 'Sokha', 'Vanh', 'Bao', 'Phong', 'Arthit'],
+      f: ['Linh', 'Mai', 'Thao', 'Siriporn', 'Nong', 'Hnin', 'Thida', 'Sreymom', 'Kanya', 'Lan', 'Ploy', 'Chau'],
+      s: ['Nguyen', 'Tran', 'Pham', 'Le', 'Srisai', 'Chaiyaporn', 'Win', 'Myint', 'Sok', 'Phommavong', 'Vu', 'Rattana']
+    },
     anglo: {
       m: ['James', 'Marcus', 'Ethan', 'Cole', 'Dalton', 'Isaiah', 'Wyatt', 'Grant', 'Reed', 'Jonah', 'Tyler', 'Malik'],
       f: ['Ava', 'Harper', 'Maya', 'Claire', 'Jordan', 'Riley', 'Nora', 'Kendra', 'Savannah', 'Imani', 'Quinn', 'Leah'],

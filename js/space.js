@@ -101,6 +101,7 @@ G.space = (function () {
     arabic: { moon: ['Al-Qamar', 'Hilal', 'Ibn Firnas'],
       mars: ['Al-Amal', 'Al-Mirrikh', 'Hope'],
       any: ['Al-Biruni', 'Ibn al-Haytham', 'Al-Sufi', 'Al-Khwarizmi', 'Rashid', 'Najm', 'Thuraya', 'Al-Battani', 'Suhail', 'Nur'] },
+    seasian: { moon: ['Hang Nga', 'Chandra Siam', 'Mae Phosop'], mars: ['Lac Long', 'Angkor'], any: ['Mekong', 'Ayutthaya', 'Bagan', 'Thang Long', 'Naga', 'Garuda', 'Sukhothai', 'Halong', 'Irrawaddy', 'Champa'] },
     nordic: { moon: ['Måne', 'Mani', 'Tycho Brahe'],
       mars: ['Bifröst', 'Asgard', 'Nordstjärnan'],
       any: ['Celsius', 'Niels Bohr', 'Rømer', 'Birkeland', 'Nansen', 'Amundsen', 'Freya', 'Ymir', 'Valhalla', 'Aurora', 'Kalevala', 'Väinämöinen', 'Ørsted'] }
@@ -111,6 +112,9 @@ G.space = (function () {
     CAS: { moon: ['Rainier', 'Evergreen'], mars: ['New Seattle', 'Cascadia Nova'], any: ['Cascade', 'Olympia', 'Columbia Gorge', 'Hood', 'Salish', 'Douglas', 'Puget'] },
     SIB: { moon: ['Baikal', 'Belka'], mars: ['Novosibirsk-2', 'Krasnoyarsk'], any: ['Taiga', 'Yenisei', 'Lena', 'Altai', 'Ob', 'Tunguska', 'Amur'] },
     SGP: { moon: ['Merlion', 'Bulan'], mars: ['Temasek'], any: ['Raffles', 'Lion City', 'Marina', 'Bintang', 'Sentosa', 'Straits'] },
+    ATL: { moon: ['Britannia', 'Halley'], mars: ['New Avalon', 'Kelvin'], any: ['Newton', 'Darwin', 'Hawking', 'Faraday', 'Shackleton', 'Lovelace', 'Halifax', 'Cartier', 'Erin', 'Thule', 'Brendan'] },
+    SAF: { moon: ['Kgwedi', 'Mapungubwe'], mars: ['New Cape', 'Kalahari'], any: ['Sutherland', 'Karoo', 'Okavango', 'Zambezi', 'Mosi-oa-Tunya', 'Drakensberg', 'Tutu', 'Kaunda', 'Namib', 'Great Zimbabwe'] },
+    MAG: { moon: ['Al-Qamar', 'Hathor'], mars: ['Atlas', 'Nefertari'], any: ['Ibn Battuta', 'Al-Idrisi', 'Carthage', 'Alexandria', 'Sahara', 'Thoth', 'Amazigh', 'Khufu', 'Tassili', 'Imhotep'] },
     MESO: { moon: ['Metztli', 'Coyolxauhqui'], mars: ['Quetzal', 'Tenochtitlan'], any: ['Xochitl', 'Kukulcán', 'Tikal', 'Palenque', 'Itzamná', 'Copán', 'Juárez'] }
   };
   var SUFFIX = ['Base', 'Station', 'Colony', 'Settlement', 'Outpost'];

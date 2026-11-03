@@ -8,7 +8,7 @@ G.intel = (function () {
   function S() { return G.state; }
 
   // Starting agencies: big, secretive or rich states start stronger.
-  var START = { USA: 55, CHN: 60, RUS: 62, EF: 45, IND: 42, PAC: 48, TUR: 40, GULF: 38, SIB: 32, NRD: 40, SGP: 45, CAS: 30, AUS: 32, SAC: 28, MESO: 25, PAU: 25 };
+  var START = { USA: 55, CHN: 60, RUS: 62, EF: 45, IND: 42, PAC: 48, TUR: 40, GULF: 38, SIB: 32, NRD: 40, SGP: 45, CAS: 30, AUS: 32, SAC: 28, MESO: 25, PAU: 25, ATL: 52, MEK: 35, MAG: 38, SAF: 30 };
   function ensure(n) {
     if (typeof n.spy !== 'number') n.spy = START[n.id] || 30;
     return n.spy;

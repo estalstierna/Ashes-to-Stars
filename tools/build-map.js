@@ -14,21 +14,24 @@ const W = 1000, H = 500;
 const ASSIGN = {
   USA: ['United States of America', 'Puerto Rico'],
   EF: ['Albania', 'Austria', 'Belgium', 'Bosnia and Herz.', 'Bulgaria', 'Croatia', 'Cyprus', 'Czechia', 'Estonia',
-    'France', 'Germany', 'Greece', 'Greenland', 'Hungary', 'Iceland', 'Ireland', 'Italy', 'Kosovo', 'Latvia', 'Lithuania',
+    'France', 'Germany', 'Greece', 'Greenland', 'Hungary', 'Italy', 'Kosovo', 'Latvia', 'Lithuania',
     'Luxembourg', 'Macedonia', 'Moldova', 'Montenegro', 'Netherlands', 'Poland', 'Portugal', 'Romania', 'Serbia', 'Slovakia',
-    'Slovenia', 'Spain', 'Switzerland', 'Ukraine', 'United Kingdom'],
+    'Slovenia', 'Spain', 'Switzerland', 'Ukraine'],
   NRD: ['Sweden', 'Norway', 'Denmark', 'Finland'],
+  ATL: ['United Kingdom', 'Ireland', 'Iceland'],
   RUS: ['Belarus'],
-  CHN: ['China', 'Taiwan', 'Mongolia', 'Vietnam', 'Laos', 'Cambodia', 'Myanmar', 'Thailand'],
+  CHN: ['China', 'Taiwan', 'Mongolia'],
+  MEK: ['Vietnam', 'Laos', 'Cambodia', 'Myanmar', 'Thailand'],
   IND: ['India', 'Pakistan', 'Bangladesh', 'Nepal', 'Bhutan', 'Sri Lanka'],
   PAC: ['Japan', 'South Korea', 'North Korea', 'Philippines'],
   TUR: ['Turkey', 'N. Cyprus', 'Azerbaijan', 'Armenia', 'Georgia', 'Kazakhstan', 'Uzbekistan', 'Turkmenistan', 'Kyrgyzstan', 'Tajikistan', 'Iran', 'Afghanistan'],
   GULF: ['Saudi Arabia', 'United Arab Emirates', 'Qatar', 'Kuwait', 'Oman', 'Yemen', 'Iraq', 'Syria', 'Jordan'],
-  PAU: ['Algeria', 'Angola', 'Benin', 'Botswana', 'Burkina Faso', 'Burundi', 'Cameroon', 'Central African Rep.', 'Chad', 'Congo',
-    "Côte d'Ivoire", 'Dem. Rep. Congo', 'Djibouti', 'Egypt', 'Eq. Guinea', 'Eritrea', 'Ethiopia', 'Gabon', 'Gambia', 'Ghana', 'Guinea',
-    'Guinea-Bissau', 'Kenya', 'Lesotho', 'Liberia', 'Libya', 'Madagascar', 'Malawi', 'Mali', 'Mauritania', 'Morocco', 'Mozambique',
-    'Namibia', 'Niger', 'Nigeria', 'Rwanda', 'S. Sudan', 'Senegal', 'Sierra Leone', 'Somalia', 'Somaliland', 'South Africa', 'Sudan',
-    'Tanzania', 'Togo', 'Tunisia', 'Uganda', 'W. Sahara', 'Zambia', 'Zimbabwe', 'eSwatini'],
+  MAG: ['Morocco', 'W. Sahara', 'Algeria', 'Tunisia', 'Libya', 'Egypt', 'Mauritania'],
+  SAF: ['South Africa', 'Namibia', 'Botswana', 'Zimbabwe', 'Mozambique', 'Lesotho', 'eSwatini', 'Zambia', 'Malawi', 'Madagascar', 'Angola'],
+  PAU: ['Benin', 'Burkina Faso', 'Burundi', 'Cameroon', 'Central African Rep.', 'Chad', 'Congo',
+    "Côte d'Ivoire", 'Dem. Rep. Congo', 'Djibouti', 'Eq. Guinea', 'Eritrea', 'Ethiopia', 'Gabon', 'Gambia', 'Ghana', 'Guinea',
+    'Guinea-Bissau', 'Kenya', 'Liberia', 'Mali', 'Niger', 'Nigeria', 'Rwanda', 'S. Sudan', 'Senegal', 'Sierra Leone', 'Somalia',
+    'Somaliland', 'Sudan', 'Tanzania', 'Togo', 'Uganda'],
   SAC: ['Argentina', 'Bolivia', 'Brazil', 'Chile', 'Colombia', 'Ecuador', 'Falkland Is.', 'Guyana', 'Paraguay', 'Peru', 'Suriname',
     'Uruguay', 'Venezuela', 'Trinidad and Tobago'],
   MESO: ['Mexico', 'Belize', 'Guatemala', 'Honduras', 'El Salvador', 'Nicaragua', 'Costa Rica', 'Panama', 'Cuba', 'Haiti',
@@ -40,7 +43,7 @@ const ASSIGN = {
 
 // Label anchors (lon, lat) and Singapore marker.
 const LABELS = {
-  USA: [-99, 40], CAS: [-123, 52], EF: [12, 49], NRD: [17, 64], RUS: [40, 56], SIB: [105, 63], CHN: [104, 33], IND: [79, 22],
+  USA: [-99, 40], CAS: [-123, 52], EF: [12, 49], NRD: [17, 64], ATL: [-3, 54], MEK: [101, 16], MAG: [6, 27], SAF: [24, -22], RUS: [40, 56], SIB: [105, 63], CHN: [104, 33], IND: [79, 22],
   PAC: [136, 37], TUR: [62, 41], GULF: [46, 24], PAU: [20, 4], SAC: [-58, -12], MESO: [-100, 21], AUS: [134, -25], SGP: [103.8, 1.35]
 };
 
@@ -97,7 +100,10 @@ const usa = byName['United States of America'];
 pieces.push({ n: 'CAS', mp: pc.intersection(usa, pnw) });
 pieces.push({ n: 'CAS', mp: pc.intersection(byName.Canada, wcan) });
 pieces.push({ n: 'USA', mp: pc.difference(usa, pnw) });
-pieces.push({ n: 'USA', mp: pc.difference(byName.Canada, wcan) });
+// Eastern Canada (Quebec and the Atlantic provinces) joined the Atlantic Commonwealth.
+const ecan = box(-80, 42, -50, 63);
+pieces.push({ n: 'ATL', mp: pc.difference(pc.intersection(byName.Canada, ecan), wcan) });
+pieces.push({ n: 'USA', mp: pc.difference(pc.difference(byName.Canada, wcan), ecan) });
 
 const missing = Object.keys(byName).filter(n => !used.has(n));
 if (missing.length) throw new Error('Unassigned: ' + missing.join(', '));

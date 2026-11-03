@@ -78,6 +78,26 @@
       story: 'The Nordic states joined the European Federation at its founding, but the war turned the Arctic into a front line. Brussels wanted conscription quotas and Arctic bases on Nordic soil. In 2071 Denmark, Sweden, Norway and Finland walked out together and signed the Treaty of Kalmar, reviving an old dream of a union of the North. They share a parliament in Copenhagen, an army and the world\'s richest sovereign fund. They are small, wealthy, highly educated and stubbornly independent, and they insist that twenty million people can still lead the world.',
       past: [[2062, 'Denmark, Sweden, Norway and Finland entered the Long War as EU members'], [2064, 'The four Nordic states became founding members of the European Federation'], [2066, 'Finnish troops held the front against Russia at Lappeenranta'], [2071, 'Left the European Federation; the Treaty of Kalmar founded the Nordic Confederation'], [2073, 'Norwegian sovereign fund merged into the Nordic Fund'], [2075, 'Opened the Andøya and Kiruna launch sites']]
     },
+    ATL: {
+      capital: 'London', founded: 2069, motto: 'One ocean, one people',
+      story: 'When the European Federation was born, Britain and Ireland stayed outside it, and the war forced them together instead. Iceland joined for protection. In 2069 Quebec and the Atlantic provinces of Canada, cut off from Ottawa, voted to join as well. The Commonwealth is held together by its navy, which kept the Atlantic convoys running through fifteen years of war. Its parliament sits in London, its fleet in Halifax, and it still believes it can keep a foot in every camp.',
+      past: [[2063, 'Britain and Ireland signed the Celtic Sea defence pact'], [2066, 'Battle of the Western Approaches: the Atlantic convoys held'], [2067, 'Iceland joined the Atlantic defence pact'], [2069, 'Quebec and Atlantic Canada joined; the Atlantic Commonwealth was founded'], [2077, 'Signed the Geneva Armistice']]
+    },
+    MEK: {
+      capital: 'Bangkok', founded: 2070, motto: 'Many rivers, one current',
+      story: 'The Long War made Southeast Asia the battlefield between China and the Pacific powers. Vietnam, Thailand, Myanmar, Laos and Cambodia learned that alone they would be swallowed. The Mekong League began as a water-sharing treaty and became a one-party federation run from Bangkok. It is young, crowded and the fastest-growing economy on Earth, and it watches Beijing very carefully.',
+      past: [[2064, 'Chinese troops crossed into northern Vietnam'], [2067, 'Mekong water-sharing treaty signed in Vientiane'], [2070, 'The Mekong League proclaimed in Bangkok'], [2074, 'Rangoon factories became the workshop of the war economy']]
+    },
+    MAG: {
+      capital: 'Cairo', founded: 2071, motto: 'From the Atlantic to the Nile',
+      story: 'North Africa was spared the bombs but not the hunger. When the old regimes collapsed under waves of refugees from the north and the south, the generals of Egypt and Algeria built a new union around two assets: the Suez Canal and the endless Saharan sun. Its solar cables light half of southern Europe, and Brussels knows it. Cairo rules with a firm hand and an eye on the Mediterranean.',
+      past: [[2063, 'The Suez Canal closed for three years by the war'], [2068, 'Bread riots toppled governments from Rabat to Cairo'], [2071, 'The Maghreb Union founded at the Cairo Conference'], [2075, 'The Great Sahara Array began exporting power to Europe']]
+    },
+    SAF: {
+      capital: 'Pretoria', founded: 2074, motto: 'Strength from the earth',
+      story: 'The southern states joined the Pan-African Union with high hopes, then watched Addis Ababa take a growing share of the wealth from their mines. In 2074 South Africa led Namibia, Botswana, Zimbabwe, Mozambique, Zambia, Angola and their neighbours out of the Union and formed a federation of their own. It controls most of the world\'s platinum and cobalt. Relations with the north are bitter, and many in Addis still call it treason.',
+      past: [[2067, 'Founding members of the Pan-African Union'], [2072, 'The Mineral Rights Crisis'], [2074, 'Left the Pan-African Union; the Southern African Federation founded in Pretoria'], [2076, 'Cape Town became the busiest port in the southern hemisphere']]
+    },
     SGP: {
       capital: 'Singapore', founded: 1965, motto: 'Onward, neutral, open',
       story: 'Singapore declared strict neutrality at the start of the war and became the place where enemies met, traded and banked. Its board of directors runs the city like a holding company. It is tiny and unimaginably rich, and it would be almost impossible to defend.',

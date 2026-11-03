@@ -5,7 +5,7 @@ G.engine = (function () {
   var U = G.util, D = G.data;
   var SPACE_K = 22;
   var SAVE_VERSION = 1;
-  var MAP_VER = 2; // bump when tools/build-map.js changes the provinces
+  var MAP_VER = 3; // bump when tools/build-map.js changes the provinces
 
   // ---------- difficulty ----------
   // aiGrowth: extra growth for AI economies. cost: multiplier on your actions' cost.
@@ -269,6 +269,42 @@ G.engine = (function () {
     return { name: G.names.full(n.culture, g), gender: g, age: U.randInt(45, 68), since: S().year };
   }
 
+  function createNation(d) {
+    var n = JSON.parse(JSON.stringify(d));
+    n.origGov = n.gov;
+    n.alive = true;
+    n.treasury = n.gdp * 0.05;
+    n.mods = [];
+    n.rel = {};
+    n.warYears = 0;
+    n.lastElection = 2077 - U.randInt(0, 3);
+    G.military.init(n, funds(n).mil, n.armyMult);
+    n.leader = makeLeader(n);
+    ensureTaxes(n);
+    return n;
+  }
+  // Nations added to the game after a save was made: they split off from the bloc that held their land.
+  var SPLIT_FROM = { ATL: 'EF', MEK: 'CHN', MAG: 'PAU', SAF: 'PAU' };
+  function addMissingNations(st) {
+    D.nations.forEach(function (d) {
+      if (st.nations[d.id]) return;
+      var n = createNation(d), parent = st.nations[SPLIT_FROM[d.id]];
+      n.lastElection = st.year - U.randInt(0, 3);
+      if (parent && parent.alive) {
+        var k = Math.min(0.3, n.gdp / parent.gdp), kp = Math.min(0.3, n.pop / parent.pop);
+        n.gdp = parent.gdp * k; n.pop = parent.pop * kp; n.tech = Math.max(n.tech, parent.tech * 0.85);
+        parent.gdp -= n.gdp; parent.pop -= n.pop;
+        n.treasury = n.gdp * 0.05; syncSpend(n);
+        G.military.init(n, funds(n).mil, n.armyMult);
+      } else if (parent && !parent.alive) {
+        n.alive = false; n.annexedBy = parent.annexedBy; n.popAtAnnex = n.pop; n.gdpAtAnnex = n.gdp; n.ownerGdpAtAnnex = parent.ownerGdpAtAnnex || n.gdp * 5;
+      }
+      Object.keys(st.nations).forEach(function (id) { var o = st.nations[id]; o.rel[d.id] = o.rel[d.id] || 0; n.rel[id] = n.rel[id] || 0; });
+      st.nations[d.id] = n;
+      (n.neighbors || []).forEach(function (nid) { var o = st.nations[nid]; if (o && o.neighbors.indexOf(d.id) < 0) o.neighbors.push(d.id); });
+    });
+  }
+
   function newGame(opts) {
     G.state = {
       version: SAVE_VERSION,
@@ -279,20 +315,7 @@ G.engine = (function () {
       difficulty: DIFFICULTY[opts.difficulty] ? opts.difficulty : 'normal'
     };
     var s = G.state;
-    D.nations.forEach(function (d) {
-      var n = JSON.parse(JSON.stringify(d));
-      n.origGov = n.gov;
-      n.alive = true;
-      n.treasury = n.gdp * 0.05;
-      n.mods = [];
-      n.rel = {};
-      n.warYears = 0;
-      n.lastElection = 2077 - U.randInt(0, 3);
-      s.nations[n.id] = n;
-      G.military.init(n, funds(n).mil, n.armyMult);
-      n.leader = makeLeader(n);
-      ensureTaxes(n);
-    });
+    D.nations.forEach(function (d) { s.nations[d.id] = createNation(d); });
     // Initial relations: rivals are hostile, neighbours wary.
     var ids = Object.keys(s.nations);
     ids.forEach(function (a) {
@@ -305,7 +328,7 @@ G.engine = (function () {
       });
     });
     [['USA', 'CHN', -55], ['USA', 'RUS', -60], ['EF', 'RUS', -65], ['CHN', 'IND', -40], ['RUS', 'SIB', -70],
-     ['USA', 'CAS', -35], ['USA', 'EF', 35], ['PAC', 'CHN', -35], ['EF', 'NRD', 30], ['NRD', 'CAS', 20], ['NRD', 'RUS', -30],
+     ['USA', 'CAS', -35], ['USA', 'EF', 35], ['PAC', 'CHN', -35], ['EF', 'NRD', 30], ['NRD', 'CAS', 20], ['NRD', 'RUS', -30], ['ATL', 'USA', 45], ['ATL', 'EF', 25], ['ATL', 'NRD', 35], ['ATL', 'RUS', -40], ['MEK', 'CHN', -25], ['MEK', 'PAC', 20], ['MEK', 'IND', 10], ['MAG', 'GULF', 30], ['MAG', 'EF', 5], ['MAG', 'PAU', -10], ['SAF', 'PAU', -20], ['SAF', 'SAC', 20], ['SAF', 'IND', 15],
      ['TUR', 'RUS', -30], ['GULF', 'IND', 20], ['SAC', 'MESO', 25], ['AUS', 'SGP', 40]].forEach(function (r) {
       s.nations[r[0]].rel[r[1]] = r[2]; s.nations[r[1]].rel[r[0]] = r[2];
     });
@@ -314,7 +337,7 @@ G.engine = (function () {
     s.firsts[2] = { nation: 'USA', year: 2065 };
 
     // Alliances that survived the Long War.
-    [['USA', 'EF', 'alliance'], ['AUS', 'SGP', 'alliance'], ['SAC', 'MESO', 'defensive'], ['CHN', 'SIB', 'defensive'], ['EF', 'NRD', 'defensive'], ['IND', 'GULF', 'defensive']].forEach(function (x) {
+    [['USA', 'EF', 'alliance'], ['AUS', 'SGP', 'alliance'], ['SAC', 'MESO', 'defensive'], ['CHN', 'SIB', 'defensive'], ['EF', 'NRD', 'defensive'], ['IND', 'GULF', 'defensive'], ['ATL', 'USA', 'defensive'], ['MAG', 'GULF', 'defensive']].forEach(function (x) {
       s.pacts.push({ a: x[0], b: x[1], type: x[2], until: 999999 });
       s.nations[x[0]].rel[x[1]] = Math.max(s.nations[x[0]].rel[x[1]] || 0, 55); s.nations[x[1]].rel[x[0]] = Math.max(s.nations[x[1]].rel[x[0]] || 0, 55);
     });
@@ -1242,6 +1265,7 @@ G.engine = (function () {
       var st = JSON.parse(raw);
       if (st.version !== SAVE_VERSION) return false;
       G.state = st;
+      addMissingNations(st);
       var nd = st.nations.NRD, dd = D.nations.filter(function (x) { return x.id === 'NRD'; })[0];
       if (nd && dd && nd.name !== dd.name) { nd.name = dd.name; nd.short = dd.short; nd.desc = dd.desc; nd.title = dd.title; nd.tier = dd.tier; }
       // The province map changed: rebuild borders from the original nations, applying full annexations.

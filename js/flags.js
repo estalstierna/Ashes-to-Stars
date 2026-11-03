@@ -95,6 +95,28 @@
         rect(9.3, 0, 2.8, 20, '#c8102e') + rect(0, 8.6, 30, 2.8, '#c8102e') +
         rect(10.05, 0, 1.3, 20, '#fecc00') + rect(0, 9.35, 30, 1.3, '#fecc00');
     },
+    ATL: function () {
+      // Navy field; a union-style cross on the hoist half and a gold star of the sea on the fly.
+      function ln(x1, y1, x2, y2, c, w) { return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + c + '" stroke-width="' + w + '"/>'; }
+      return rect(0, 0, 30, 20, '#12305e') +
+        ln(0, 0, 15, 20, '#fff', 2.4) + ln(15, 0, 0, 20, '#fff', 2.4) + ln(0, 0, 15, 20, '#c8102e', 0.8) + ln(15, 0, 0, 20, '#c8102e', 0.8) +
+        rect(5.9, 0, 3.2, 20, '#fff') + rect(0, 8.4, 15, 3.2, '#fff') + rect(6.6, 0, 1.8, 20, '#c8102e') + rect(0, 9.1, 15, 1.8, '#c8102e') +
+        rect(15, 0, 0.35, 20, '#d9dde8') + star(22.5, 10, 3.4, '#f2c94c');
+    },
+    MEK: function () {
+      // Red, white and blue bands with a golden lotus ring.
+      return hstripes(['#a51931', '#f4f5f8', '#2d2a4a', '#2d2a4a', '#f4f5f8', '#a51931']) +
+        circle(15, 10, 3.6, '#f2c230') + circle(15, 10, 2.6, '#2d2a4a') + star(15, 10, 1.9, '#f2c230');
+    },
+    MAG: function () {
+      // Green and white halves, a red crescent and star, a sand-gold band below.
+      return vstripes(['#00733e', '#f4f4f4']) + rect(0, 16.5, 30, 3.5, '#d4a24c') +
+        crescent(15, 8.3, 4.3, '#c8102e', '#00733e', 1.3) + rect(15, 0, 15, 16.5, 'none') + star(18.6, 8.3, 1.8, '#c8102e');
+    },
+    SAF: function () {
+      // Black, gold and green with a blue hoist triangle and a white star: the south's minerals and lands.
+      return hstripes(['#111', '#e0a526', '#00774a']) + '<polygon points="0,0 11,10 0,20" fill="#1c4f9c"/>' + star(4, 10, 2.4, '#fff');
+    },
     SGP: function () {
       return hstripes(['#ef3340', '#fff']) + crescent(6, 5, 3.2, '#fff', '#ef3340', 1.2) +
         star(9, 2.8, 0.6, '#fff') + star(10.8, 4.2, 0.6, '#fff') + star(10.1, 6.4, 0.6, '#fff') + star(7.9, 6.4, 0.6, '#fff') + star(7.2, 4.2, 0.6, '#fff');
