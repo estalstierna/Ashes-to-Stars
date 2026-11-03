@@ -121,6 +121,34 @@ async function endTurn(page) {
     check(errors.length === 0, 'no page errors ' + errors.join('; '));
   }
 
+  console.log('Colony management and war in space');
+  {
+    const { page, errors } = await newGame(browser, 'USA', 'leader');
+    await page.click('[data-act=tab][data-arg=space]');
+    await page.click('[data-act=colony][data-arg="1"]');
+    check((await page.textContent('#modal')).includes('Specialisation'), 'colony window opens');
+    await page.click('#modal [data-act=colspec][data-arg="1|research"]');
+    check(await page.evaluate(() => G.space.list()[0].spec === 'research'), 'specialisation can be changed');
+    await page.click('#modal [data-act=colbuild][data-arg="1|reactor"]');
+    check(await page.evaluate(() => G.space.list()[0].bld.includes('reactor')), 'a building can be built');
+    await page.click('#modal [data-act=colgov][data-arg="1|0"]');
+    check(await page.evaluate(() => (G.space.list()[0].govSince || 0) === G.state.year), 'a governor can be appointed');
+    await page.click('#modal [data-act=colrule][data-arg="1|home"]');
+    check(await page.evaluate(() => G.space.list()[0].rule === 'home'), 'self-rule can be granted');
+    const rp = await page.evaluate(() => G.colony.produce(G.space.list()[0]).rp);
+    check(rp > 0, 'the colony produces research (' + Math.round(rp) + ' RP)');
+    // At war with China, which holds a colony on the Moon: the orbital assault becomes available.
+    const res = await page.evaluate(() => {
+      const E = G.engine; G.uiKit.closeModal(); E.declareWar(E.pn(), E.nation('CHN'), { noAllies: true, quiet: true });
+      E.pn().mil.eq.space *= 20; G.state.ap = 2; G.state.used = [];
+      const a = G.actions.list.find(x => x.id === 'orbital-assault');
+      const ts = G.actions.targets(a);
+      return { avail: G.actions.available().includes(a), n: ts.length, out: ts.length ? G.actions.perform('orbital-assault', ts[0].id) : '' };
+    });
+    check(res.avail && res.n > 0 && /take|thrown back/.test(res.out), 'orbital assault on an enemy colony: ' + res.out);
+    check(errors.length === 0, 'no page errors ' + errors.join('; '));
+  }
+
   console.log('Treaties and calls to arms');
   {
     const { page, errors } = await newGame(browser, 'NRD', 'leader');

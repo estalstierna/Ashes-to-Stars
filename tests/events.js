@@ -1,7 +1,7 @@
 // Runs every choice of every event in several game situations; fails on exceptions or NaN.
 // Usage: node tests/events.js
 const fs = require('fs'), path = require('path'), vm = require('vm');
-const files = ['util', 'names', 'data', 'lore', 'flags', 'engine', 'military', 'research', 'laws', 'character', 'mapdata', 'territory', 'actions', 'events', 'events-extra', 'war', 'space', 'cabinet', 'intel', 'council'];
+const files = ['util', 'names', 'data', 'lore', 'flags', 'engine', 'military', 'research', 'laws', 'character', 'mapdata', 'territory', 'actions', 'events', 'events-extra', 'war', 'space', 'colonies', 'cabinet', 'intel', 'council'];
 function boot() {
   const ctx = { console, Math, JSON, Object, Array, String, Number, Date, localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} } };
   ctx.window = ctx; vm.createContext(ctx);

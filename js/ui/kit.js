@@ -49,7 +49,9 @@ G.uiKit = (function () {
     cap: 'M2 9l10-4.5L22 9l-10 4.5zM6 11v4.5c0 1.5 2.7 3 6 3s6-1.5 6-3V11M22 9v5.5',
     map: 'M3 6.5l6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5zM9 4v13.5M15 6.5V20',
     scale: 'M12 3.5v17M7 20.5h10M5 7h14M5 7l-3 6.5a3 3 0 0 0 6 0zM19 7l-3 6.5a3 3 0 0 0 6 0zM12 3.5l-1 1.5h2z',
-    cross: 'M9 3.5h6v5.5h5.5v6H15v5.5H9V15H3.5V9H9z'
+    cross: 'M9 3.5h6v5.5h5.5v6H15v5.5H9V15H3.5V9H9z',
+    pick: 'M14 4c3 .4 5.6 1.9 7 4-2.9-1-5.9-1.1-8.4-.4M14 4 3.5 14.5M14 4c-1.3 1.6-1.9 3.3-1.4 3.6M3.5 14.5l2 2M5.5 16.5 12.6 7.6M5 20l3.2-3.2',
+    mask: 'M4 5c5 1.5 11 1.5 16 0v6c0 4.5-3.6 8.5-8 8.5S4 15.5 4 11zM8.5 10.5c.8-.6 1.7-.6 2.5 0M13 10.5c.8-.6 1.7-.6 2.5 0M9 14.5c1.8 1.4 4.2 1.4 6 0'
   };
   function icon(name, cls) {
     var d = ICONS[name];
@@ -61,7 +63,7 @@ G.uiKit = (function () {
     '🏛': 'home', '⚡': 'bolt', '💰': 'coin', '💸': 'coin', '🏦': 'coin', '🎖': 'rank', '🪖': 'rank', '🌍': 'globe', '🌐': 'globe', '🔬': 'flask', '🧬': 'flask',
     '🚀': 'rocket', '📰': 'news', '📺': 'tv', '⚔': 'swords', '🤝': 'link', '🛡': 'shield', '🔒': 'lock', '🗳': 'ballot', '⚠': 'alert',
     '📜': 'doc', '🕊': 'flag', '🏳': 'flag', '🏴': 'flag', '🛰': 'satellite', '⚓': 'anchor', '✈': 'plane', '💻': 'chip', '🎓': 'cap', '🗺': 'map', '⚖': 'scale', '🏥': 'cross', '👥': 'people', '👤': 'person', '🕴': 'person', '💼': 'case', '👑': 'crown',
-    '🏗': 'build', '🏭': 'build', '📉': 'chart', '🌱': 'leaf', '🌾': 'leaf', '🤖': 'gear', '🕵': 'eye', '🔥': 'fire', '💥': 'fire'
+    '🏗': 'build', '⛏': 'pick', '🎭': 'mask', '🏭': 'build', '📉': 'chart', '🌱': 'leaf', '🌾': 'leaf', '🤖': 'gear', '🕵': 'eye', '🔥': 'fire', '💥': 'fire'
   };
   var EMOJI_RE = /(?:[\u{1F300}-\u{1FAFF}]|[\u2600-\u26FF\u2700-\u27BF\u2B50](?=\uFE0F)|[\u26A0-\u26FF\u2693\u2694\u2696\u26B0\u26D3\u26CF\u2622\u2600\u270A\u2708\u26AB\u26A1])\uFE0F?(?:\u200D[\s\S]\uFE0F?)*\s?/gu;
   function swapEmoji(text, inSvg) {

@@ -276,6 +276,10 @@ G.actions = (function () {
         E.log('🚫 ' + n.name + ' imposes sanctions on ' + t.name + (joined.length ? ', joined by ' + joined.join(', ') : '') + '.', 'player');
         return t.name + ' is under sanctions' + (joined.length ? '. ' + joined.join(', ') + ' join in.' : '. Nobody else joins, for now.');
       } },
+    { id: 'orbital-assault', cd: 2, cat: 'Military', role: 'leader', name: 'Orbital assault', cost: 0.004, target: 'enemycolony',
+      cond: function () { return G.colony && G.military.hasSpace(N()) && G.colony.enemyColonies(N()).length > 0; },
+      desc: 'Send your Space Force and marines to seize an enemy colony. Success depends on your Space Force against its defences. A failed assault costs 15% of your Space Force.',
+      run: function (id) { return G.colony.assault(id); } },
     // ----- Leader: World Council -----
     { id: 'council-propose', cd: 6, cat: 'World Council', role: 'leader', name: 'Table a resolution', cost: 0.002, target: 'resolution',
       cond: function () { return G.council && !G.council.C().pending; },
@@ -484,6 +488,7 @@ G.actions = (function () {
       case 'other': return all;
       case 'sanctionable': return all.filter(function (x) { return !E.allied(n, x); });
       case 'spy': return all;
+      case 'enemycolony': return G.colony.enemyColonies(n).map(function (c) { var o = E.nation(c.nation); return { id: String(c.id), name: c.name + ' (' + o.short + ', ' + G.space.body(c.body).name + ')', desc: G.space.LEVELS[c.level - 1] + ' · ' + U.people(c.pop) + ' people · success ' + Math.round(G.colony.assaultChance(n, c) * 100) + '%' }; });
       case 'resolution': return G.council.playerOptions().map(function (r) { return { id: G.council.key(r), name: G.council.title(r), desc: G.council.desc(r) }; });
       case 'lobby': var pr = G.council.C().pending; return pr ? [{ id: 'for', name: 'Lobby for "' + G.council.title(pr) + '"', desc: 'Win votes for it.' }, { id: 'against', name: 'Lobby against it', desc: 'Win votes against it.' }] : [];
       case 'gov': return Object.keys(G.data.govs).filter(function (g) { return g !== n.gov; });

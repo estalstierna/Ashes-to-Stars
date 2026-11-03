@@ -64,13 +64,17 @@
     var mine = SP.of(n);
     h += '<div class="card"><h3>Your colonies</h3>' + (mine.length ? mine.map(function (c) {
       var b = SP.body(c.body), can = lead && SP.canExpand(c), cost = SP.expandCost(n, c);
+      var CO = G.colony; CO.ensure(c);
+      var sp = CO.SPECS[c.spec];
       return '<div class="action"><div class="row"><div class="name">' + b.icon + ' ' + esc(c.name) + '</div><span class="tag">' + SP.LEVELS[c.level - 1] + '</span></div>' +
-        '<div class="desc">' + esc(b.name) + ' · ' + U.people(c.pop) + ' people · founded ' + c.founded + '</div>' +
+        '<div class="desc">' + esc(b.name) + ' · ' + U.people(c.pop) + ' people · ' + sp.icon + ' ' + sp.name + (CO.blockaded(c) ? ' · <span class="bad">blockaded</span>' : '') + '</div>' +
+        '<div class="small muted" style="margin:-4px 0 6px">' + outputLine(c) + '</div>' +
         '<div class="row small"><span>Self-rule movement</span><span class="' + (c.autonomy >= 70 ? 'bad' : c.autonomy >= 40 ? 'warn' : '') + '">' + Math.round(c.autonomy) + '%</span></div>' + bar(c.autonomy, c.autonomy >= 70 ? 'bad' : c.autonomy >= 40 ? 'warn' : 'good') +
         (lead && c.level < SP.LEVELS.length ? '<button class="btn sm ' + (can ? 'blue' : '') + '" data-act="colexpand" data-arg="' + c.id + '" ' + (can ? '' : 'disabled') + '>' +
-          (can ? 'Expand to ' + SP.LEVELS[c.level].toLowerCase() + ' · ' + U.money(cost) : 'Can expand in ' + Math.max(1, 5 - (s.year - c.grew)) + ' yr') + '</button>' : '') + '</div>';
+          (can ? 'Expand to ' + SP.LEVELS[c.level].toLowerCase() + ' · ' + U.money(cost) : 'Can expand in ' + Math.max(1, 5 - (s.year - c.grew)) + ' yr') + '</button> ' : '') +
+        '<button class="btn sm" data-act="colony" data-arg="' + c.id + '">Manage</button></div>';
     }).join('') : '<div class="small muted">No colonies yet. ' + (mi >= 2 ? 'Tap the Moon on the map to found one.' : 'Reach Lunar Colony (space milestone) to found your first colony.') + '</div>') +
-      '<div class="small muted" style="margin-top:6px">Colonies add space progress, research points and economic growth every year. Big, distant colonies drift towards independence; a stable homeland slows that down.</div></div>';
+      '<div class="small muted" style="margin-top:6px">Colonies add space progress, research and growth, and each one specialises: mining, science, shipyards, habitats or culture. Tap Manage to choose its role, build, appoint a governor and set how much self-rule it gets. In wars, colonies can be blockaded and stormed.</div></div>';
 
     // Space race milestones
     h += '<div class="card"><h3>The space race</h3>';
@@ -113,6 +117,83 @@
     }
     modal(h + '<button class="btn" data-act="close">Close</button>');
   }
+
+  // A short summary of what a colony gives each year.
+  function outputLine(c) {
+    var o = G.colony.produce(c), n = E.nation(c.nation), parts = [];
+    if (o.income > 0) parts.push('+' + U.money(o.income) + '/yr');
+    if (o.rp > 0.5) parts.push('+' + Math.round(o.rp) + ' RP');
+    if (o.space > 0.05) parts.push('+' + o.space.toFixed(1) + ' space');
+    if (o.eq > 0) parts.push('+' + U.money(o.eq) + ' warships');
+    if (o.approval > 0.05) parts.push('+' + o.approval.toFixed(1) + ' approval');
+    if (c.spec === 'habitat') parts.push('faster growth, calmer colonists');
+    return parts.join(' · ');
+  }
+
+  // ---------- colony management ----------
+  function colonyModal(cid) {
+    var CO = G.colony, c = SP.list().filter(function (x) { return String(x.id) === String(cid); })[0];
+    if (!c) return;
+    CO.ensure(c);
+    var n = E.pn(), lead = E.isLeader() && c.nation === n.id, b = SP.body(c.body), y = S().year;
+    var h = '<div class="kicker">' + b.icon + ' ' + esc(b.name) + ' · ' + SP.LEVELS[c.level - 1] + '</div><h2>' + esc(c.name) + '</h2>' +
+      '<div class="grid2">' + stat('People', U.people(c.pop)) + stat('Founded', c.founded) +
+      stat('Self-rule movement', '<span class="' + (c.autonomy >= 70 ? 'bad' : c.autonomy >= 40 ? 'warn' : '') + '">' + Math.round(c.autonomy) + '%</span>') +
+      stat('Defence', U.money(CO.defence(c))) + '</div>' +
+      (CO.blockaded(c) ? '<p class="small bad" style="margin-top:8px">Blockaded by an enemy fleet: output halved.</p>' : '') +
+      '<p class="small" style="margin-top:8px"><b>Each year:</b> ' + (outputLine(c) || 'nothing yet') + '</p>';
+
+    // Specialisation
+    var locked = (c.specSince || 0) + 10 > y;
+    h += '<h3 style="margin-top:14px">Specialisation</h3>' + CO.SPEC_KEYS.map(function (k) {
+      var sp = CO.SPECS[k], su = CO.suit(c, k), sel = c.spec === k;
+      var fit = su >= 1.4 ? '<span class="good">excellent here</span>' : su >= 1.1 ? '<span class="good">good here</span>' : su >= 0.9 ? '<span class="muted">average here</span>' : '<span class="bad">poor here</span>';
+      return '<button class="choice ' + (sel ? 'sel' : '') + '" ' + (lead && !sel && !locked ? 'data-act="colspec" data-arg="' + c.id + '|' + k + '"' : 'disabled') + '>' +
+        '<div class="row"><div class="t">' + sp.icon + ' ' + sp.name + '</div><span class="small">' + fit + '</span></div><div class="d">' + sp.desc + '</div></button>';
+    }).join('') + (lead && locked ? '<div class="small muted">Can change role again in ' + ((c.specSince || 0) + 10 - y) + ' years.</div>' : '');
+
+    // Buildings
+    h += '<h3 style="margin-top:14px">Buildings <span class="small" style="text-transform:none;letter-spacing:0">· ' + c.bld.length + ' / ' + CO.slots(c) + ' slots (one per level)</span></h3>' +
+      Object.keys(CO.BUILDINGS).map(function (k) {
+        var B = CO.BUILDINGS[k], built = CO.has(c, k);
+        if (!built && B.bodies && B.bodies.indexOf(c.body) < 0) return '';
+        var can = lead && CO.canBuild(c, k), cost = CO.buildCost(n, k);
+        var why = built ? '<span class="good">Built</span>' : c.level < (B.minLevel || 1) ? '<span class="muted">Needs ' + SP.LEVELS[B.minLevel - 1].toLowerCase() + '</span>' : c.bld.length >= CO.slots(c) ? '<span class="muted">No free slot</span>' : '';
+        return '<div class="action"><div class="row"><div class="name">' + esc(B.name) + '</div><div class="cost">' + (built ? '' : U.money(cost)) + '</div></div><div class="desc">' + esc(B.desc) + '</div>' +
+          (why ? '<div class="small">' + why + '</div>' : lead ? '<button class="btn sm ' + (can ? 'blue' : '') + '" data-act="colbuild" data-arg="' + c.id + '|' + k + '" ' + (can ? '' : 'disabled') + '>Build</button>' : '') + '</div>';
+      }).join('');
+
+    // Governor
+    var tr = c.gov ? CO.TRAITS[c.gov.trait] : null, govLocked = (c.govSince || 0) + 5 > y;
+    h += '<h3 style="margin-top:14px">Governor</h3>' +
+      (c.gov ? '<div class="row"><b>' + esc(c.gov.name) + '</b><span class="tag">' + tr.name + '</span></div><div class="small muted">' + tr.desc + '</div>' : '') +
+      (lead ? (govLocked ? '<div class="small muted" style="margin-top:6px">Can be replaced in ' + ((c.govSince || 0) + 5 - y) + ' years.</div>' :
+        '<div class="small muted" style="margin:8px 0 4px">Candidates</div>' + CO.candidates(c).map(function (g, i) {
+          return '<button class="choice" data-act="colgov" data-arg="' + c.id + '|' + i + '"><div class="row"><div class="t">' + esc(g.name) + '</div><span class="tag">' + CO.TRAITS[g.trait].name + '</span></div><div class="d">' + CO.TRAITS[g.trait].desc + '</div></button>';
+        }).join('')) : '');
+
+    // Self-rule
+    var ruleLocked = (c.ruleSince || 0) + 5 > y;
+    h += '<h3 style="margin-top:14px">Self-rule</h3><div class="seg">' + Object.keys(CO.RULES).map(function (r) {
+      return '<button class="' + (c.rule === r ? 'sel' : '') + '" ' + (lead && c.rule !== r && !ruleLocked ? 'data-act="colrule" data-arg="' + c.id + '|' + r + '"' : 'disabled') + '>' + CO.RULES[r].name + '</button>';
+    }).join('') + '</div><div class="small muted" style="margin-top:6px">' + CO.RULES[c.rule].desc + (lead && ruleLocked ? ' Can change again in ' + ((c.ruleSince || 0) + 5 - y) + ' years.' : '') + '</div>';
+
+    if (lead && SP.canExpand(c)) h += '<button class="btn blue" data-act="colexpand" data-arg="' + c.id + '">Expand to ' + SP.LEVELS[c.level].toLowerCase() + ' · ' + U.money(SP.expandCost(n, c)) + '</button>';
+    modal(h + '<button class="btn" data-act="close">Close</button>');
+  }
+  on('colony', function (cid) { colonyModal(cid); });
+  function colAct(fn, msg) {
+    return function (arg) {
+      var p = arg.split('|'), c = SP.list().filter(function (x) { return String(x.id) === p[0]; })[0];
+      if (!c || c.nation !== E.pn().id || !E.isLeader()) return;
+      if (fn(c, p[1])) { E.save(); toast(msg(c, p[1])); }
+      var y = window.scrollY; render(); window.scrollTo(0, y); colonyModal(c.id);
+    };
+  }
+  on('colspec', colAct(function (c, k) { return G.colony.setSpec(c, k); }, function (c, k) { return c.name + ' becomes a ' + G.colony.SPECS[k].name.toLowerCase() + ' colony.'; }));
+  on('colbuild', colAct(function (c, k) { return G.colony.build(c, k); }, function (c, k) { return G.colony.BUILDINGS[k].name + ' built on ' + c.name + '.'; }));
+  on('colgov', colAct(function (c, i) { return G.colony.appoint(c, +i); }, function (c) { return c.gov.name + ' is the new governor of ' + c.name + '.'; }));
+  on('colrule', colAct(function (c, r) { return G.colony.setRule(c, r); }, function (c, r) { return c.name + ' now has ' + G.colony.RULES[r].name.toLowerCase() + '.'; }));
 
   on('colfound', function (id) {
     var n = E.pn(), b = SP.body(id), cost = SP.foundCost(n, b);

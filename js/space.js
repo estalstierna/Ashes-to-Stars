@@ -127,7 +127,7 @@ G.space = (function () {
   }
 
   function foundCost(n, b) { return n.gdp * b.cost * E().diff().cost; }
-  function expandCost(n, c) { var b = body(c.body); return n.gdp * b.cost * (0.6 + c.level * 0.4) * E().diff().cost; }
+  function expandCost(n, c) { var b = body(c.body); return n.gdp * b.cost * (0.6 + c.level * 0.4) * E().diff().cost * (G.colony && G.colony.has(c, 'spaceport') ? 0.7 : 1); }
   function canExpand(c) { return c.level < LEVELS.length && S().year - c.grew >= 5; }
 
   function found(n, bodyId) {
@@ -135,6 +135,7 @@ G.space = (function () {
     if (!b || !unlocked(n, b) || of(n).some(function (c) { return c.body === bodyId; })) return null;
     var c = { id: ++S().colonySeq, body: bodyId, nation: n.id, name: name(n, b), level: 1, founded: S().year, pop: LEVEL_POP[0], autonomy: 0, grew: S().year };
     list().push(c);
+    if (G.colony) G.colony.ensure(c);
     var mine = n.id === S().player.nation;
     E().log('🚀 ' + n.name + ' founds ' + c.name + ' on ' + b.name + '.', mine ? 'player' : 'world');
     if (mine) S().player.legacy += 2;
@@ -149,7 +150,10 @@ G.space = (function () {
   }
 
   // Growth bonus from all of a nation's colonies (resources shipped home).
-  function growth(n) { return Math.min(0.015, of(n).reduce(function (a, c) { return a + body(c.body).econ * c.level; }, 0)); }
+  function growth(n) {
+    if (G.colony) return G.colony.growth(n);
+    return Math.min(0.015, of(n).reduce(function (a, c) { return a + body(c.body).econ * c.level; }, 0));
+  }
 
   function year() {
     var s = S(), pid = s.player.nation;
@@ -162,12 +166,13 @@ G.space = (function () {
       }
       if (c.free) return;
       // People arrive and children are born, up to what the colony can hold.
-      var cap = LEVEL_POP[c.level - 1] * 1.5;
-      c.pop = Math.min(cap, c.pop * 1.06 + LEVEL_POP[c.level - 1] * 0.05);
+      var CO = G.colony;
+      var cap = LEVEL_POP[c.level - 1] * 1.5 * (CO ? CO.capMult(c) : 1);
+      c.pop = Math.min(cap, c.pop * 1.06 * (CO ? CO.popGrowth(c) : 1) + LEVEL_POP[c.level - 1] * 0.05);
       n.space += b.space * c.level * 0.5;
       G.research.ensure(n).bank += b.rp * c.level * 0.5;
       // Distant, large colonies drift towards self-rule; a stable homeland slows it.
-      var drift = c.level * (b.orbit + 1) * 0.15 - (n.stability - 50) / 60 + (c.grantedRights ? -0.6 : 0);
+      var drift = (c.level * (b.orbit + 1) * 0.15 - (n.stability - 50) / 60) * (CO ? CO.driftScale(c) : 1) + (CO ? CO.driftMod(c) : (c.grantedRights ? -0.6 : 0));
       c.autonomy = U.clamp(c.autonomy + drift, 0, 100);
       if (c.autonomy >= 85 && U.chance(0.1)) {
         if (n.id === pid && E().isLeader()) G.events.queue({ id: 'colony-independence', ctx: { oid: n.id, otherName: n.name, colony: c.id, colonyName: c.name, bodyName: b.name } });
@@ -175,6 +180,7 @@ G.space = (function () {
       }
     });
     // Independent settlements on the same world band together (at most one free colony per world).
+    if (G.colony) G.colony.year();
     BODIES.forEach(function (b) {
       var free = list().filter(function (c) { return c.free && c.body === b.id; });
       if (free.length < 2) return;
@@ -215,7 +221,7 @@ G.space = (function () {
     text: 'The people of {colonyName} on {bodyName} have voted to become a free nation. Their delegates await your answer.',
     choices: [
       { t: 'Grant independence and stay friends', r: function (c) { var col = list().filter(function (x) { return x.id === c.colony; })[0]; if (col) independence(col); E().pn().space += 10; return 'A new free world is born. It keeps trading with you.'; } },
-      { t: 'Offer more self-rule instead', r: function (c) { var col = list().filter(function (x) { return x.id === c.colony; })[0]; if (col) { col.autonomy = 55; col.grantedRights = true; } return 'A colonial parliament is created. The movement calms down, for now.'; } },
+      { t: 'Offer more self-rule instead', r: function (c) { var col = list().filter(function (x) { return x.id === c.colony; })[0]; if (col) { col.autonomy = 55; col.grantedRights = true; col.rule = 'home'; } return 'A colonial parliament is created. The movement calms down, for now.'; } },
       { t: 'Send in the marines', r: function (c) {
         var col = list().filter(function (x) { return x.id === c.colony; })[0];
         if (!col) return 'Too late.';
