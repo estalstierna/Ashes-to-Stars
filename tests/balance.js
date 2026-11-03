@@ -22,7 +22,7 @@ for (const difficulty of ['easy', 'normal', 'hard', 'brutal']) {
       if (s.player.role === 'leader' && mode === 'econ') {
         // Min-maxer: maximum investment, high taxes, repeat the best actions every turn.
         const n = E.pn();
-        Object.assign(n.spend, { econ: 0.1, sci: 0.08, space: 0.05, welfare: 0.04, mil: 0.03 }); n.tax = 0.31;
+        Object.assign(n.spend, { econ: 0.1, sci: 0.08, space: 0.05, welfare: 0.04, mil: 0.03 }); G.engine.scaleTaxes(n, 0.31);
         for (const id of ['infra', 'research', 'welfare', 'mission']) if (s.ap > 0) A.perform(id);
       } else if (s.player.role === 'leader') {
         const n = E.pn();

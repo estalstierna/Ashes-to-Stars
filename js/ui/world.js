@@ -344,7 +344,7 @@
       '<div class="grid2">' + stat('Government', E.gov(n).name) + stat('Leader', n.leader ? esc(n.leader.name) : esc(S().player.name)) +
       stat('Population', U.people(n.pop)) + stat('GDP', U.money(n.gdp)) + stat('Military', U.num(E.power(n))) + stat('Tech', n.tech.toFixed(1)) +
       stat('Stability', Math.round(n.stability)) + stat('Space', D.milestones[E.milestoneIndex(n)].name) +
-      K.treasuryStat(n) + stat('Tax rate', Math.round(n.tax * 100) + '%') + '</div>' +
+      K.treasuryStat(n) + stat('Tax take', Math.round(n.tax * 100) + '% of GDP') + '</div>' +
       '<p class="small" style="margin-top:10px">' + (wars.length ? '⚔️ At war with ' + wars.join(', ') : 'At peace') + '</p>' +
       (pacts.length ? '<p class="small">🤝 ' + pacts.join(' · ') + '</p>' : '') +
       (!self ? '<p class="small">Relations with you: <b>' + Math.round(E.relation(me, n)) + '</b> · Neighbour: ' + (me.neighbors.indexOf(n.id) >= 0 ? 'yes' : 'no') + '</p>' : '');

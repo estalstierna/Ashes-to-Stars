@@ -19,9 +19,14 @@
   function budgetCard(n) {
     var f = E.funds(n);
     return '<div class="card"><h3>National budget (per year)</h3>' +
-      '<div class="slider-row"><div class="row"><span>💰 Tax rate <b id="taxv">' + Math.round(n.tax * 100) + '%</b></span><span class="good" id="revv">+' + U.money(E.revenue(n)) + '</span></div>' +
-      '<input type="range" min="8" max="45" value="' + Math.round(n.tax * 100) + '" data-input="tax"></div>' +
-      '<div class="small muted" style="margin:-2px 0 12px">Higher taxes bring in more money but hurt approval.</div>' +
+      '<h3 style="margin-top:2px">Taxes <span class="small" style="text-transform:none;letter-spacing:0">· total take <b id="taxv">' + (n.tax * 100).toFixed(1) + '%</b> of GDP</span></h3>' +
+      E.TAX_KEYS.map(function (k) {
+        var T = E.TAXES[k], small = T.max <= 0.05, v = n.taxes[k] * 100;
+        return '<div class="slider-row"><div class="row"><span>' + T.name + ' <b id="tx-' + k + '">' + v.toFixed(small ? 1 : 0) + '%</b></span><span class="good" id="txr-' + k + '">+' + U.money(E.taxRevenue(n, k)) + '</span></div>' +
+          '<input type="range" min="0" max="' + T.max * 100 + '" step="' + (small ? 0.1 : 0.5) + '" value="' + v.toFixed(1) + '" data-input="taxk" data-k="' + k + '">' +
+          '<div class="small muted" style="margin:-2px 0 8px">' + T.desc + '</div></div>';
+      }).join('') +
+      '<div id="tax-fx">' + taxEffects(n) + '</div>' +
       '<h3 style="margin-top:6px">Expenses <span class="small" style="text-transform:none;letter-spacing:0">(% of GDP)</span></h3>' +
       E.SECTORS.map(function (k) {
         return '<div class="slider-row"><div class="row"><span>' + SECTOR_LABELS[k] + ' <b id="sp-' + k + '">' + (n.spend[k] * 100).toFixed(1) + '%</b></span><span class="bad" id="sf-' + k + '">−' + U.money(f[k]) + '</span></div>' +
@@ -54,9 +59,23 @@
     return h + '</div>';
   }
 
-  on('tax', function (v) {
-    var n = E.pn(); n.tax = v / 100;
-    $('taxv').textContent = v + '%'; $('revv').textContent = '+' + U.money(E.revenue(n));
+  // What the current tax mix does, compared with a typical one.
+  function taxEffects(n) {
+    var g = E.taxGrowth(n), ap = E.taxApproval(n), t = n.taxes;
+    var cl = U.clamp;
+    var bus = cl((0.22 - t.corporate) * 15, -2.5, 2) - Math.min(3, t.wealth * 100);
+    var pub = cl(-(t.income - 0.25) * 10, -2, 1) + cl(-(t.vat - 0.15) * 10, -1.5, 1) + Math.min(2, t.wealth * 60);
+    function fx(label, v, unit, d) { return line(label, '<span class="' + (v > 0.001 ? 'good' : v < -0.001 ? 'bad' : 'muted') + '">' + (Math.abs(v) < 0.001 ? 'no effect' : (v > 0 ? '+' : '−') + Math.abs(v).toFixed(d) + unit) + '</span>'); }
+    return '<div style="margin:2px 0 12px">' + fx('Economic growth', g * 100, '%/yr', 2) + fx('Public approval', ap, '', 1) +
+      (E.isLeader() ? fx('Business elite support', bus, '/yr', 1) + fx('Support of the people', pub, '/yr', 1) : '') + '</div>';
+  }
+  on('taxk', function (v, el) {
+    var n = E.pn(), k = el.getAttribute('data-k'), small = E.TAXES[k].max <= 0.05;
+    E.setTax(n, k, +v / 100);
+    $('tx-' + k).textContent = (+v).toFixed(small ? 1 : 0) + '%';
+    $('taxv').textContent = (n.tax * 100).toFixed(1) + '%';
+    E.TAX_KEYS.forEach(function (key) { var r = $('txr-' + key); if (r) r.textContent = '+' + U.money(E.taxRevenue(n, key)); });
+    var fxEl = $('tax-fx'); if (fxEl) fxEl.innerHTML = K.tidy(taxEffects(n));
     refreshBudget(); E.save();
   });
   on('spend', function (v, el) {

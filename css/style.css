@@ -276,3 +276,13 @@ label.field { display: block; margin: 18px 0 7px; font-size: 10.5px; color: var(
 .tl-row.past::before { background: #6b7280; }
 .tl-row.past .tl-text { color: #9aa3b2; }
 .tl-year { font-weight: 700; min-width: 38px; font-variant-numeric: tabular-nums; }
+
+/* Power base: reasons behind each group's support */
+.drivers { margin: -3px 0 10px; font-size: 12.5px; }
+.drivers summary { list-style: none; display: flex; justify-content: space-between; gap: 10px; color: var(--muted); cursor: pointer; }
+.drivers summary::-webkit-details-marker { display: none; }
+.drivers summary > span:first-child::after { content: ' ›'; color: var(--faint); }
+.drivers[open] summary > span:first-child::after { content: ' ⌄'; }
+.drivers summary > span:last-child { flex: none; font-weight: 600; font-variant-numeric: tabular-nums; }
+.drivers .row { padding: 4px 0 4px 10px; border-left: 2px solid var(--line2); margin-top: 4px; color: var(--muted); align-items: flex-start; }
+.drivers .row span:last-child { flex: none; font-variant-numeric: tabular-nums; }

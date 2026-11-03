@@ -126,6 +126,56 @@ G.engine = (function () {
     return { mil: a.mil / t, econ: a.econ / t, welfare: a.welfare / t, sci: a.sci / t, space: a.space / t };
   }
   var SECTORS = ['mil', 'econ', 'welfare', 'sci', 'space'];
+  // ---------- taxes ----------
+  // Four taxes. `base` is the share of GDP each one is levied on, so revenue = GDP × Σ rate × base.
+  // n.tax holds the resulting overall tax take (share of GDP) for the rest of the simulation.
+  var TAXES = {
+    income:    { name: 'Income tax', base: 0.55, max: 0.6, desc: 'The biggest earner. High rates anger ordinary people.' },
+    corporate: { name: 'Corporate tax', base: 0.18, max: 0.5, desc: 'The business elite hates it; high rates slow investment and growth.' },
+    wealth:    { name: 'Wealth tax', base: 0.6, max: 0.05, desc: 'Raises little but the people love it. The rich hate it; above 1.5% capital flees.' },
+    vat:       { name: 'Consumption tax (VAT)', base: 0.4, max: 0.35, desc: 'Steady money that hits everyday shoppers; little effect on growth.' }
+  };
+  var TAX_KEYS = Object.keys(TAXES);
+  function taxTake(t) { return TAX_KEYS.reduce(function (a, k) { return a + (t[k] || 0) * TAXES[k].base; }, 0); }
+  // Give a nation a tax mix matching its overall rate (older saves and AI nations).
+  function ensureTaxes(n) {
+    if (n.taxes) return n.taxes;
+    var T = n.tax || 0.22;
+    var low = { corporate: 1, monarchy: 1 }[n.gov];
+    var t = { income: 1.05, corporate: 0.9, wealth: 0, vat: 0.6 };
+    var k = (T - (low ? 0 : 0.005) * TAXES.wealth.base) / taxTake(t);
+    n.taxes = { income: t.income * k, corporate: t.corporate * k * (low ? 0.6 : 1), wealth: low ? 0 : 0.005, vat: t.vat * k };
+    if (low) n.taxes.income *= T / taxTake(n.taxes);
+    n.tax = taxTake(n.taxes);
+    return n.taxes;
+  }
+  function setTax(n, key, rate) {
+    ensureTaxes(n);
+    n.taxes[key] = U.clamp(rate, 0, TAXES[key].max);
+    n.tax = taxTake(n.taxes);
+  }
+  // Raise or lower the overall take by scaling income, corporate and consumption taxes.
+  function scaleTaxes(n, target) {
+    var t = ensureTaxes(n), fixed = t.wealth * TAXES.wealth.base, rest = taxTake(t) - fixed;
+    if (rest <= 0) return;
+    var k = Math.max(0, target - fixed) / rest;
+    ['income', 'corporate', 'vat'].forEach(function (key) { t[key] = U.clamp(t[key] * k, 0, TAXES[key].max); });
+    n.tax = taxTake(t);
+  }
+  function taxRevenue(n, key) { ensureTaxes(n); return n.gdp * n.taxes[key] * TAXES[key].base; }
+  // Effects of the tax mix on growth and approval (relative to a typical mix).
+  function taxGrowth(n) {
+    var t = ensureTaxes(n);
+    var corp = t.corporate > 0.22 ? -(t.corporate - 0.22) * 0.06 : (0.22 - t.corporate) * 0.035;
+    var flight = t.wealth > 0.015 ? -(t.wealth - 0.015) * 0.4 : 0;
+    var inc = t.income > 0.4 ? -(t.income - 0.4) * 0.05 : 0;
+    var vat = t.vat > 0.2 ? -(t.vat - 0.2) * 0.02 : 0;
+    return corp + flight + inc + vat;
+  }
+  function taxApproval(n) {
+    var t = ensureTaxes(n);
+    return -(t.income - 0.22) * 70 - (t.vat - 0.13) * 70 - (t.corporate - 0.2) * 10 + Math.min(4, t.wealth * 150);
+  }
   function revenue(n) { return n.gdp * n.tax; }
   // Spending per sector is stored as a fraction of GDP (n.spend).
   // AI governments derive it from their budget weights, spending 80% of revenue.
@@ -241,6 +291,7 @@ G.engine = (function () {
       s.nations[n.id] = n;
       G.military.init(n, funds(n).mil, n.armyMult);
       n.leader = makeLeader(n);
+      ensureTaxes(n);
     });
     // Initial relations: rivals are hostile, neighbours wary.
     var ids = Object.keys(s.nations);
@@ -353,7 +404,7 @@ G.engine = (function () {
     if (dr < 1.2) n.debtWarned = false;
 
     // Approval and stability.
-    var apT = 50 + (growth - 0.02) * 400 + sat(welR, 0.05) * 320 - n.warYears * 2 * (ownedByPlayer(n) ? diff().weariness : 1) - (n.tax - 0.2) * 120 + modSum(n, 'approval') - G.military.conscApprovalPenalty(n) + G.research.bonus(n, 'approval') + G.laws.fx(n, 'approval') + G.cabinet.fx(n, 'approval');
+    var apT = 50 + (growth - 0.02) * 400 + sat(welR, 0.05) * 320 - n.warYears * 2 * (ownedByPlayer(n) ? diff().weariness : 1) + taxApproval(n) + modSum(n, 'approval') - G.military.conscApprovalPenalty(n) + G.research.bonus(n, 'approval') + G.laws.fx(n, 'approval') + G.cabinet.fx(n, 'approval');
     if (n.gov === 'junta') apT += milR * 150;
     apT = U.clamp(apT, 5, 95);
     n.approval = U.clamp(n.approval + (apT - n.approval) * 0.25, 0, 100);
@@ -405,6 +456,7 @@ G.engine = (function () {
       ['Economy budget (investment)', sat(f.econ / n.gdp, 0.06) * 0.6],
       ['Technology (discoveries)', G.research.bonus(n, 'growth')],
       ['Space colonies', G.space ? G.space.growth(n) : 0],
+      ['Taxes', taxGrowth(n)],
       ['Laws & policies', G.laws ? G.laws.fx(n, 'growth') : 0],
       ['Cabinet', G.cabinet ? G.cabinet.fx(n, 'growth') : 0],
       ['Rival momentum (difficulty)', ownedByPlayer(n) ? 0 : diff().aiGrowth],
@@ -569,8 +621,8 @@ G.engine = (function () {
     var spaceTilt = Math.min(2, 1 + (S().year - 2077) / 300);
     target = Object.assign({}, target, { space: target.space * spaceTilt });
     SECTORS.forEach(function (k) { a[k] += (target[k] - a[k]) * 0.3; });
-    if (n.approval < 30) n.tax = Math.max(0.12, n.tax - 0.005);
-    if (n.treasury < 0) n.tax = Math.min(0.35, n.tax + 0.01);
+    if (n.approval < 30) scaleTaxes(n, Math.max(0.12, n.tax - 0.005));
+    if (n.treasury < 0) scaleTaxes(n, Math.min(0.35, n.tax + 0.01));
     syncSpend(n);
   }
 
@@ -1200,6 +1252,7 @@ G.engine = (function () {
       for (var id in st.nations) {
         var sn = st.nations[id];
         if (!sn.spend) syncSpend(sn);
+        ensureTaxes(sn);
         if (!sn.mil) { G.military.init(sn, funds(sn).mil, 0.8); delete sn.army; }
       }
       // Older saves: no province map yet. Start from the original borders, applying full annexations.
@@ -1222,7 +1275,7 @@ G.engine = (function () {
     newGame: newGame, endTurn: endTurn, save: save, load: load, hasSave: hasSave, wipe: wipe,
     nation: nation, alive: alive, pn: pn, isLeader: isLeader, gov: gov, title: title, roleTitle: roleTitle, log: log,
     yearsPerTurn: yearsPerTurn, era: era, allocShares: allocShares, revenue: revenue, funds: funds, power: power,
-    SECTORS: SECTORS, syncSpend: syncSpend, spending: spending, debt: debt, debtRatio: debtRatio, interestRate: interestRate,
+    SECTORS: SECTORS, TAXES: TAXES, TAX_KEYS: TAX_KEYS, ensureTaxes: ensureTaxes, setTax: setTax, scaleTaxes: scaleTaxes, taxRevenue: taxRevenue, taxGrowth: taxGrowth, taxApproval: taxApproval, syncSpend: syncSpend, spending: spending, debt: debt, debtRatio: debtRatio, interestRate: interestRate,
     interest: interest, balance: balance, borrowLimit: borrowLimit, projectCost: projectCost,
     milestoneIndex: milestoneIndex, spaceRate: spaceRate, sat: sat, DIFFICULTY: DIFFICULTY, diff: diff, threatLevel: threatLevel, addThreat: addThreat, growthParts: growthParts, ceilingPc: ceilingPc, earthFactor: earthFactor,
     allies: allies, allied: allied, near: near, chron: chron, leaderName: leaderName, allianceType: allianceType, joinChance: joinChance, occupiedBy: occupiedBy, occupation: occupation, resolveIndependence: resolveIndependence, formAlliance: formAlliance, breakAlliance: breakAlliance, blocPower: blocPower, relation: relation, changeRel: changeRel, wars: wars, warsOf: warsOf, atWar: atWar,

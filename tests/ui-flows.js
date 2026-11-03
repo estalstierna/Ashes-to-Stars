@@ -256,6 +256,18 @@ async function endTurn(page) {
     check(await page.$('#ch-gdp svg'), 'GDP chart renders');
     await page.$eval('[data-input=spend][data-k=space]', el => { el.value = '12'; el.dispatchEvent(new Event('input', { bubbles: true })); });
     check((await page.textContent('#budget-sum')).includes('Deficit'), 'overspending shows a deficit');
+    const tx = await page.evaluate(() => ({ n: document.querySelectorAll('[data-input=taxk]').length, before: G.engine.pn().tax, biz: G.character.ensure().business }));
+    check(tx.n === 4, 'four tax sliders');
+    await page.$eval('[data-input=taxk][data-k=corporate]', el => { el.value = '5'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+    const after = await page.evaluate(() => ({ tax: G.engine.pn().tax, corp: G.engine.pn().taxes.corporate, fx: document.getElementById('tax-fx').textContent }));
+    check(Math.abs(after.corp - 0.05) < 1e-9 && after.tax < tx.before, 'cutting corporate tax lowers the total take');
+    check(/Business elite support\s*\+/.test(after.fx), 'tax effects preview business support');
+    await page.click('[data-act=tab][data-arg=home]');
+    const drv = await page.evaluate(() => Array.from(document.querySelectorAll('.drivers')).map(d => d.textContent).join(' | '));
+    check(drv.includes('Corporate tax 5%') && drv.includes('Military budget'), 'power base lists what moves each group');
+    await page.click('[data-act=endturn]'); await clearModals(page);
+    for (let i = 0; i < 6; i++) { const b = await page.$('#modal [data-act=endturn-force]'); if (b) await b.click(); await clearModals(page); }
+    check(await page.evaluate(b => G.character.ensure().business > b, tx.biz), 'low corporate tax wins business support');
     check(errors.length === 0, 'no page errors ' + errors.join('; '));
   }
 

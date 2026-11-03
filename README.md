@@ -51,6 +51,7 @@ A text-based grand strategy RPG for mobile browsers.
   - Betraying an attacked partner breaks the treaty. Declining to join an attack only cools relations.
   - The player gets a call to arms when a partner is attacked, and a request to join when a full ally attacks someone.
   - The Diplomacy view lists your treaties, the chance each partner would defend you against your worst rival, and all alliances in the world.
+- **Taxes:** income, corporate, wealth and consumption tax, each with its own revenue and its own effect on growth, approval and the support of business and the people.
 - **Economy:** set taxes and spending per sector (military, economy, welfare, science, space) and see your surplus or deficit live. Deficits become national debt, with interest that rises as debt grows. Also trade agreements and Earth restoration.
 - **Space tab:**
   - A tappable map of the solar system with the Moon, Mars, Ceres and the Belt, Europa, Ganymede, Titan, Venus' cloud cities, Mercury and Proxima b. Each has facts and lore; the Moon has the most, including Artemis Colony (USA, 2065) and Shackleton Outpost (China, 2072).

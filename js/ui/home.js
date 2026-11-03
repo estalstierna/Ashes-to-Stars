@@ -83,11 +83,18 @@
       '<span class="small">Influence <b>' + Math.round(p.influence) + '</b> <span class="' + (dir >= 0.5 ? 'good' : dir <= -0.5 ? 'bad' : 'muted') + '">' +
       (Math.abs(dir) < 0.5 ? '(steady)' : (dir > 0 ? '▲ rising to ' : '▼ falling to ') + Math.round(tgt)) + '</span></span></div>' +
       '<div class="small muted" style="margin:6px 0 10px">Your influence drifts towards the support of these groups. In a ' + esc(E.gov(E.pn()).name) + ' the most important are shown first. Build support in the Actions tab ("Power base").</div>';
+    var drv = C.drivers(p, E.pn());
     C.KEYS.slice().sort(function (a, b) { return w[b] - w[a]; }).forEach(function (k) {
-      var fac = C.FACTIONS[k];
+      var fac = C.FACTIONS[k], list = drv[k].slice().sort(function (a, b) { return Math.abs(b[1]) - Math.abs(a[1]); }), tot = C.net(list);
+      var cls = tot >= 0.05 ? 'good' : tot <= -0.05 ? 'bad' : 'muted';
       h += '<div class="row small"><span>' + fac.icon + ' ' + fac.name + ' <span class="muted">· counts ' + Math.round(w[k] * 100) + '%</span></span><b>' + Math.round(f[k]) + '</b></div>' +
-        bar(f[k], f[k] >= 60 ? 'good' : f[k] >= 30 ? 'warn' : 'bad') + '<div class="small muted" style="margin:-4px 0 8px">' + fac.perk + '</div>';
+        bar(f[k], f[k] >= 60 ? 'good' : f[k] >= 30 ? 'warn' : 'bad') +
+        '<details class="drivers"><summary><span>' + fac.perk + '</span><span class="' + cls + '">' + (tot >= 0 ? '+' : '−') + Math.abs(tot).toFixed(1) + '/yr</span></summary>' +
+        list.map(function (d) {
+          return '<div class="row"><span>' + esc(d[0]) + '</span><span class="' + (d[1] > 0 ? 'good' : 'bad') + '">' + (d[1] > 0 ? '+' : '−') + Math.abs(d[1]).toFixed(1) + '</span></div>';
+        }).join('') + '</details>';
     });
+    h += '<div class="small muted" style="margin-top:4px">Tap a group to see what moves its support each year. Taxes and spending are set in Economy, laws in Home → Laws.</div>';
     return h + '</div>';
   }
 

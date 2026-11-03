@@ -48,22 +48,60 @@ G.character = (function () {
     return KEYS.reduce(function (a, k) { return a + f[k] * w[k]; }, 0);
   }
 
-  // Yearly: standings fade, policies and your role win or lose support, influence follows.
-  function year() {
-    var p = P(), n = E().pn(), f = ensure(p);
-    KEYS.forEach(function (k) { f[k] += (25 - f[k]) * 0.04; });
-    if (p.role === 'leader') {
-      var milShare = E().funds(n).mil / n.gdp;
-      change('military', milShare >= 0.04 ? 1 : milShare < 0.02 ? -1.5 : 0);
-      change('business', n.tax <= 0.2 ? 1 : n.tax >= 0.3 ? -1.5 : 0);
-      change('public', (n.approval - 50) / 25);
-      change('intel', 0.5);
+  // What moves each group's support this year, as named reasons: { faction: [[label, change], ...] }.
+  // Shown under each group in the power base and applied once a year.
+  function drivers(p, n) {
+    p = p || P(); n = n || E().pn();
+    var f = ensure(p), out = {}, Ex = E();
+    KEYS.forEach(function (k) { out[k] = []; });
+    function add(k, label, v) { if (Math.abs(v) >= 0.05) out[k].push([label, v]); }
+    KEYS.forEach(function (k) { add(k, 'Support fades without attention', (25 - f[k]) * 0.04); });
+    var lead = p.role === 'leader';
+    if (lead) {
+      var fu = Ex.funds(n), t = Ex.ensureTaxes(n), growth = n.growth || 0;
+      // Military: money, wars and a strong army.
+      var milShare = fu.mil / n.gdp;
+      add('military', 'Military budget ' + (milShare * 100).toFixed(1) + '% of GDP (3% is neutral)', U.clamp((milShare - 0.03) * 60, -2, 2));
+      if (Ex.atWar(n)) add('military', 'War footing', 0.6);
+      var conscPct = n.mil ? n.mil.consc : 0;
+      if (conscPct > 0.015) add('military', 'High conscription', 0.4);
+      // Business: taxes on firms and the rich, growth and debt.
+      add('business', 'Corporate tax ' + (t.corporate * 100).toFixed(0) + '% (22% is neutral)', U.clamp((0.22 - t.corporate) * 15, -2.5, 2));
+      if (t.wealth > 0) add('business', 'Wealth tax ' + (t.wealth * 100).toFixed(1) + '%', -Math.min(3, t.wealth * 100));
+      add('business', 'Economic growth ' + (growth * 100).toFixed(1) + '%/yr (2% is neutral)', U.clamp((growth - 0.02) * 60, -1.5, 1.5));
+      var trade = S().pacts.filter(function (x) { return x.type === 'trade' && (x.a === n.id || x.b === n.id); }).length;
+      if (trade) add('business', 'Trade agreements (' + trade + ')', Math.min(1, trade * 0.3));
+      if (Ex.debtRatio(n) > 1) add('business', 'National debt above 100% of GDP', -1);
+      // The people: approval, welfare and the taxes they pay.
+      add('public', 'Approval ' + Math.round(n.approval) + '% (50% is neutral)', (n.approval - 50) / 25);
+      var welShare = fu.welfare / n.gdp;
+      add('public', 'Welfare spending ' + (welShare * 100).toFixed(1) + '% of GDP (5% is neutral)', U.clamp((welShare - 0.05) * 40, -1.5, 1.5));
+      add('public', 'Income tax ' + (t.income * 100).toFixed(0) + '% (25% is neutral)', U.clamp(-(t.income - 0.25) * 10, -2, 1));
+      add('public', 'Consumption tax ' + (t.vat * 100).toFixed(0) + '% (15% is neutral)', U.clamp(-(t.vat - 0.15) * 10, -1.5, 1));
+      if (t.wealth > 0) add('public', 'Wealth tax ' + (t.wealth * 100).toFixed(1) + '%', Math.min(2, t.wealth * 60));
+      if (Ex.atWar(n)) add('public', 'War weariness', -Math.min(1.5, (n.warYears || 0) * 0.15));
+      // Media and the spies.
+      add('media', 'Your popularity ' + Math.round(p.popularity) + ' (50 is neutral)', U.clamp((p.popularity - 50) / 40, -1, 1));
+      add('intel', 'Serving the head of state', 0.5);
+      add('intel', 'Stability ' + Math.round(n.stability) + ' (50 is neutral)', U.clamp((n.stability - 50) / 50, -1, 1));
+      // Laws, one line per law that matters to a group.
+      if (G.laws) G.laws.LAWS.forEach(function (l) {
+        var o = G.laws.option(l.id, G.laws.ensure(n)[l.id]);
+        if (o && o.fx.fac) for (var k in o.fx.fac) add(k, 'Law: ' + o.name, o.fx.fac[k]);
+      });
     }
-    // Your laws win or lose you support with each faction.
-    if (p.role === 'leader' && G.laws) { var drift = G.laws.factionDrift(n); for (var fk in drift) change(fk, drift[fk]); }
-    if (p.role === 'general') change('military', 1);
-    if (p.role === 'corporate') change('business', 1);
-    if (p.role === 'politician') change('public', 0.5);
+    if (p.role === 'general') add('military', 'One of their own (general)', 1);
+    if (p.role === 'corporate') add('business', 'One of their own (executive)', 1);
+    if (p.role === 'politician') add('public', 'Working the constituency', 0.5);
+    if (p.role !== 'leader') add('media', 'Your popularity ' + Math.round(p.popularity), U.clamp((p.popularity - 50) / 60, -0.6, 0.6));
+    return out;
+  }
+  function net(list) { return list.reduce(function (a, d) { return a + d[1]; }, 0); }
+
+  // Yearly: apply every reason, then influence follows the power base.
+  function year() {
+    var p = P(), n = E().pn(), f = ensure(p), d = drivers(p, n);
+    KEYS.forEach(function (k) { f[k] = U.clamp(f[k] + net(d[k]), 0, 100); });
     // Influence moves a quarter of the way to what the power base supports.
     p.influence = U.clamp(p.influence + (target() - p.influence) * 0.25, 0, 100);
     // Income: a salary for office holders plus favours from the business elite ($M).
@@ -80,5 +118,5 @@ G.character = (function () {
     return f;
   }
 
-  return { FACTIONS: FACTIONS, KEYS: KEYS, weights: weights, ensure: ensure, standing: standing, change: change, changeAll: changeAll, target: target, year: year, inherit: inherit };
+  return { drivers: drivers, net: net, FACTIONS: FACTIONS, KEYS: KEYS, weights: weights, ensure: ensure, standing: standing, change: change, changeAll: changeAll, target: target, year: year, inherit: inherit };
 })();
